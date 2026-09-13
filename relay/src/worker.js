@@ -12,9 +12,7 @@ export default {
     }
 
     if (pathname === "/health") {
-      const configured = Boolean(
-        env.GITHUB_TOKEN && env.GITHUB_REPO && env.TURNSTILE_SECRET
-      );
+      const configured = Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO);
       return new Response(
         JSON.stringify({ ok: configured, configured }),
         {

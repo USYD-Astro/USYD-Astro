@@ -27,7 +27,6 @@
   }
 
   var RELAY = form.dataset.relay || "";
-  var TURNSTILE_SITE_KEY = form.dataset.turnstile || "";
 
   var THUMB_EDGE = 1600;
   var QUALITY = 0.82;
@@ -40,10 +39,8 @@
   var previews = document.getElementById("previews");
   var statusLine = document.getElementById("status");
   var submitBtn = document.getElementById("send");
-  var turnstileBox = document.getElementById("turnstile");
 
   var prepared = [];
-  var turnstileToken = "";
 
   function human(bytes) {
     return bytes >= 1048576
@@ -188,41 +185,6 @@
     });
   });
 
-  /* ---- Turnstile -------------------------------------------------------- */
-
-  function turnstileReady() {
-    if (!TURNSTILE_SITE_KEY || !window.turnstile) {
-      return Boolean(turnstileToken);
-    }
-    try {
-      window.turnstile.render(turnstileBox, {
-        sitekey: TURNSTILE_SITE_KEY,
-        callback: function (token) {
-          turnstileToken = token;
-        },
-        "expired-callback": function () {
-          turnstileToken = "";
-        },
-        "error-callback": function () {
-          turnstileToken = "";
-        }
-      });
-    } catch (error) {
-      /* Already rendered, or the widget failed; leave the token empty so the
-         submit path reports it rather than silently sending without one. */
-    }
-    return false;
-  }
-
-  if (TURNSTILE_SITE_KEY) {
-    var script = document.createElement("script");
-    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    script.async = true;
-    script.defer = true;
-    script.onload = turnstileReady;
-    document.head.appendChild(script);
-  }
-
   /* ---- upload ----------------------------------------------------------- */
 
   function buildForm() {
@@ -234,8 +196,7 @@
         email: value("email"),
         credit: value("credit"),
         caption: value("caption"),
-        consent: document.getElementById("consent").checked,
-        turnstile: turnstileToken
+        consent: document.getElementById("consent").checked
       })
     );
     prepared.forEach(function (entry) {
@@ -255,14 +216,6 @@
     form.reset();
     prepared = [];
     previews.innerHTML = "";
-    turnstileToken = "";
-    if (window.turnstile && TURNSTILE_SITE_KEY) {
-      try {
-        window.turnstile.reset(turnstileBox);
-      } catch (error) {
-        /* nothing useful to do */
-      }
-    }
     submitBtn.disabled = false;
     submitBtn.textContent = "Send my photos";
   }
@@ -329,10 +282,6 @@
     if (!document.getElementById("consent").checked) {
       say("Please confirm the consent box before sending.", "warn");
       document.getElementById("consent").focus();
-      return;
-    }
-    if (TURNSTILE_SITE_KEY && !turnstileToken) {
-      say("Please wait for the anti-spam check to finish, then try again.", "warn");
       return;
     }
 

@@ -580,16 +580,6 @@ p {
   line-height: 1.5;
 }
 
-/* Turnstile renders its own iframe in here. The relay verifies the token, so
-   this is a real captcha rather than a decorative one. */
-.turnstile {
-  margin: 4px 0 18px;
-}
-
-.turnstile:empty {
-  margin: 0;
-}
-
 .previews {
   display: grid;
   gap: 8px;

@@ -1,11 +1,10 @@
 # The photo upload relay. See README.md in this directory for deployment.
 #
-# Secrets are NOT in this file. Set them once with `wrangler secret put`:
+# Secrets are NOT in this file. Set the token once with `wrangler secret put`:
 #
 #   GITHUB_TOKEN      a fine-grained personal access token, scoped to this
 #                     repository only, with "Contents: Read and write".
 #                     Nothing else. Do not reuse a personal token.
-#   TURNSTILE_SECRET  the secret half of a Cloudflare Turnstile widget.
 
 name = "suas-photo-relay"
 main = "src/worker.js"

@@ -13,8 +13,13 @@
  *
  * What it does NOT do: touch image bytes. Workers have no image pipeline on
  * the free plan, so the browser re-encodes the photo (which strips EXIF) and
- * the publishing Action strips it again. The relay's job is to verify the
- * captcha, refuse junk, and commit.
+ * the publishing Action strips it again. The relay's job is to refuse junk
+ * and commit. There is deliberately no captcha: nothing uploads until the
+ * submitter ticks the consent box and gives a reply address, and the cheapest
+ * real deterrents are already here -- origin checking, strict size and type
+ * limits, and a hard 8-photo cap. If spam ever becomes a problem, a Turnstile
+ * widget verified here (or a WAF rate-limit rule on the route) slots in
+ * without changing anything downstream.
  */
 
 const MAX_BYTES = 12 * 1024 * 1024;
@@ -28,9 +33,6 @@ const ALLOWED_TYPES = new Map([
   ["image/heic", ".heic"],
   ["image/heif", ".heif"],
 ]);
-
-const TURNSTILE_VERIFY =
-  "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 function cors(origin, extra = {}) {
   return {
@@ -72,15 +74,6 @@ function extensionFor(file) {
   const name = clean(file.name, 200).toLowerCase();
   const match = name.match(/\.(jpe?g|png|webp|heic|heif)$/);
   return match ? `.${match[1] === "jpeg" ? "jpg" : match[1]}` : null;
-}
-
-export async function verifyTurnstile(token, secret, ip, doFetch) {
-  const body = new URLSearchParams({ secret, response: clean(token, 4000) });
-  if (ip) body.set("remoteip", ip);
-  const response = await doFetch(TURNSTILE_VERIFY, { method: "POST", body });
-  if (!response.ok) return false;
-  const result = await response.json().catch(() => null);
-  return Boolean(result && result.success);
 }
 
 /* Commit one file to a branch via the Contents API. The branch is created
@@ -168,10 +161,10 @@ export async function handleUpload(request, env, deps = {}) {
   if (request.method !== "POST") {
     return json({ ok: false, error: "Use POST." }, 405, origin);
   }
-  if (allowed && origin && origin !== allowed) {
+  if (allowed && origin !== allowed) {
     return json({ ok: false, error: "Origin not allowed." }, 403, origin);
   }
-  if (!env.GITHUB_TOKEN || !env.GITHUB_REPO || !env.TURNSTILE_SECRET) {
+  if (!env.GITHUB_TOKEN || !env.GITHUB_REPO) {
     return json({ ok: false, error: "The relay is not configured yet." }, 500, origin);
   }
 
@@ -229,20 +222,6 @@ export async function handleUpload(request, env, deps = {}) {
         origin
       );
     }
-  }
-
-  const turnstileOk = await verifyTurnstile(
-    meta.turnstile || form.get("turnstile"),
-    env.TURNSTILE_SECRET,
-    request.headers.get("cf-connecting-ip") || "",
-    doFetch
-  );
-  if (!turnstileOk) {
-    return json(
-      { ok: false, error: "The anti-spam check did not pass. Please try again." },
-      400,
-      origin
-    );
   }
 
   const id = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
