@@ -13,6 +13,57 @@
     });
   }
 
+  /* ---- hero slideshow ---------------------------------------------------- */
+  /* The band at the top of the home page crossfades through the gallery
+     photos. The first slide is server-rendered as is-current, so the band
+     is never empty; this only takes over the stepping. Pausing when the
+     tab is hidden keeps the show from banking up a backlog of ticks while
+     invisible, and prefers-reduced-motion keeps the first slide still. */
+  var slidesRoot = document.getElementById("hero-slides");
+  if (slidesRoot) {
+    var slides = Array.prototype.slice.call(slidesRoot.querySelectorAll(".hero__slide"));
+    var shown = Math.max(0, slides.findIndex(function (el) {
+      return el.classList.contains("is-current");
+    }));
+    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var paused = document.hidden;
+    var timer = 0;
+
+    var showSlide = function (i) {
+      shown = (i + slides.length) % slides.length;
+      slides.forEach(function (el, n) {
+        el.classList.toggle("is-current", n === shown);
+      });
+    };
+
+    var step = function () {
+      showSlide(shown + 1);
+    };
+
+    var stop = function () {
+      window.clearInterval(timer);
+      timer = 0;
+    };
+
+    var start = function () {
+      if (timer || paused || reduceMotion || slides.length < 2) {
+        return;
+      }
+      timer = window.setInterval(step, 5200);
+    };
+
+    start();
+
+    document.addEventListener("visibilitychange", function () {
+      paused = document.hidden;
+      if (paused) {
+        stop();
+      } else {
+        start();
+      }
+    });
+  }
+
   /* ---- event gallery lightbox ------------------------------------------- */
   var gallery = document.querySelector(".gallery");
   if (!gallery) {

@@ -248,9 +248,48 @@ p {
 
 .hero__credit {
   margin: 22px 0 0;
-  font-size: 0.82rem;
+  font-size: 0.7rem;
   opacity: 0.85;
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- hero slideshow ----------------------------------------------- */
+
+/* The home page hero now crossfades through the event gallery photos
+   instead of showing one static shot. The figures stack in a fixed-height
+   band; each image covers it via object-fit and swaps with a long opacity
+   transition. The band keeps --brand-dark behind it, matching the original
+   hero treatment. With JS off, the first figure simply sits there still. */
+.hero__slides {
+  position: absolute;
+  inset: 0;
+  background: var(--brand-dark);
+  overflow: hidden;
+}
+
+.hero__slide {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  transition: opacity 1.6s ease;
+}
+
+.hero__slide.is-current {
+  opacity: 1;
+  z-index: 1;
+}
+
+.hero__slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__slide {
+    transition: none;
+  }
 }
 
 /* ---------- generic sections -------------------------------------------- */
@@ -305,11 +344,17 @@ p {
   padding: 26px 24px;
 }
 
-.card img {
-  width: 92px;
-  height: 92px;
+/* Card logos sit inline before the title text, at emoji size, aligned like
+   an emoji glyph would be (see vertical-align). Must override the global
+   img { display: block } rule, which would otherwise force each icon onto
+   its own line above the title. */
+.card h3 img {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
   object-fit: contain;
-  margin-bottom: 18px;
+  vertical-align: -0.18em;
+  margin-right: 0.4em;
 }
 
 .card h3 {
