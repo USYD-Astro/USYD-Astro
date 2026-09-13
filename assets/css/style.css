@@ -262,15 +262,14 @@ p {
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
 }
 
+/* Deliberately not given a measure limit. The original 62ch cap wrapped
+   body copy at roughly half the container width, which read as arbitrary
+   mid-sentence breaks. Flex children would otherwise shrink to fit, hence
+   the explicit 100% below. */
 .lede {
   font-size: 1.08rem;
-  max-width: 62ch;
-}
-
-/* Used where a measure-limited lede would break a sentence awkwardly on
-   wide screens (the gallery intro, which otherwise splits mid-clause). */
-.lede--wide {
   max-width: none;
+  width: 100%;
 }
 
 /* ---------- card grid (home page activities) ----------------------------- */
