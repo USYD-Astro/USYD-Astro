@@ -82,9 +82,16 @@ def build(page: str) -> pathlib.Path:
         lambda m: m.group(1) + data_uri(m.group(2)) + m.group(3),
         src,
     )
-    src = re.sub(r'<script src="assets/js/main.js"></script>',
-                 lambda m: "<script>\n" + (ROOT / "assets/js/main.js").read_text() + "\n</script>",
-                 src)
+    def js_inline(m):
+        return (
+            "<script>\n"
+            + (ROOT / m.group(1)).read_text()
+            + "\n</script>"
+        )
+
+    src = re.sub(
+        r'<script src="(assets/js/[^"]+)"></script>', js_inline, src
+    )
     # data-full attributes are only used by the lightbox; point them at the thumb
     src = re.sub(r'data-full="assets/[^"]*"', "", src)
 
