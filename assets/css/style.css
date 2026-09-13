@@ -1,0 +1,627 @@
+/* ==========================================================================
+   Sydney University Astronomy Society
+   Recreation of usydastro.au (Google Sites, captured 2025-03-16)
+
+   Colour and typography are taken from the original: the brand blue is
+   sampled from the site logo and matches the colour Google Sites passed
+   to the embedded Google Calendar (#1a5dad); the fonts are those the
+   original requested from Google Fonts.
+   ========================================================================== */
+
+:root {
+  --brand: #1a5dad;
+  --brand-dark: #144a8a;
+  --ink: #212121;
+  --muted: #5f6368;
+  --rule: #e0e0e0;
+  --paper: #ffffff;
+  --wash: #f5f6f7;
+  --font-head: "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Lato", "Helvetica Neue", Arial, sans-serif;
+  --wrap: 1120px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: var(--brand);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-head);
+  font-weight: 400;
+  line-height: 1.25;
+  margin: 0 0 0.5em;
+}
+
+h2 {
+  font-size: 2rem;
+  margin-top: 0;
+}
+
+h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.35em;
+}
+
+p {
+  margin: 0 0 1em;
+}
+
+.wrap {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---------- skip link ---------------------------------------------------- */
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--brand);
+  color: #fff;
+  padding: 10px 16px;
+  z-index: 100;
+}
+
+.skip:focus {
+  left: 0;
+}
+
+/* ---------- top bar ------------------------------------------------------ */
+
+.topbar {
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+}
+
+.topbar__inner {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.brandmark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.brandmark img {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+}
+
+.brandmark span {
+  font-family: var(--font-head);
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+}
+
+.nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.nav a {
+  font-family: var(--font-head);
+  font-size: 0.95rem;
+  text-decoration: none;
+  color: var(--muted);
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.nav a:hover,
+.nav a:focus {
+  background: var(--wash);
+  color: var(--ink);
+}
+
+.nav a[aria-current="page"] {
+  color: var(--brand);
+  font-weight: 500;
+}
+
+.nav-toggle {
+  display: none;
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+/* ---------- hero --------------------------------------------------------- */
+
+.hero {
+  position: relative;
+  min-height: 340px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #fff;
+  background: var(--brand-dark);
+  overflow: hidden;
+}
+
+.hero__bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.hero__bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.34);
+}
+
+.hero__inner {
+  position: relative;
+  padding: 72px 24px 62px;
+  max-width: 900px;
+}
+
+.hero__eyebrow {
+  font-family: var(--font-head);
+  font-size: 0.85rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin: 0 0 12px;
+}
+
+.hero h1 {
+  font-size: clamp(1.7rem, 4.4vw, 3rem);
+  margin: 0;
+  text-shadow: 0 1px 18px rgba(0, 0, 0, 0.5);
+}
+
+.hero__credit {
+  margin: 22px 0 0;
+  font-size: 0.82rem;
+  opacity: 0.85;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- generic sections -------------------------------------------- */
+
+.section {
+  padding: 56px 0;
+}
+
+.section--wash {
+  background: var(--wash);
+}
+
+/* The gallery section carried a photographic background in the original
+   (the light-painting shot); the gradient here keeps the photos legible. */
+.section--banner {
+  background-color: #0d1b2a;
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+}
+
+.section--banner .lede {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.section--banner .gallery img {
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+}
+
+.lede {
+  font-size: 1.08rem;
+  max-width: 62ch;
+}
+
+/* ---------- card grid (home page activities) ----------------------------- */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 28px;
+  margin-top: 28px;
+}
+
+.card {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 26px 24px;
+}
+
+.card img {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  margin-bottom: 18px;
+}
+
+.card h3 {
+  color: var(--brand);
+}
+
+.card p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- event gallery ------------------------------------------------ */
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.gallery button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+
+.gallery img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.gallery button:hover img,
+.gallery button:focus img {
+  transform: scale(1.06);
+}
+
+/* ---------- lightbox ----------------------------------------------------- */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 24px;
+}
+
+.lightbox[open],
+.lightbox.is-open {
+  display: flex;
+}
+
+.lightbox img {
+  max-width: 92vw;
+  max-height: 82vh;
+  object-fit: contain;
+}
+
+.lightbox__bar {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  display: flex;
+  gap: 10px;
+}
+
+.lightbox__bar button {
+  background: rgba(255, 255, 255, 0.14);
+  border: 0;
+  color: #fff;
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.lightbox__bar button:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* ---------- committee ---------------------------------------------------- */
+
+.committee {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 26px;
+  margin-top: 30px;
+}
+
+.person {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 0;
+}
+
+.person img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: var(--wash);
+}
+
+.person figcaption {
+  padding: 16px 18px 20px;
+}
+
+.person h3 {
+  margin: 0 0 2px;
+  font-size: 1.1rem;
+}
+
+.person .role {
+  color: var(--brand);
+  font-family: var(--font-head);
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 10px;
+}
+
+.person .degree {
+  font-size: 0.92rem;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.person .fact {
+  font-size: 0.92rem;
+  font-style: italic;
+  margin: 0;
+}
+
+/* ---------- contact details --------------------------------------------- */
+
+.contact {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 30px;
+  margin-top: 28px;
+}
+
+.contact h3 {
+  color: var(--brand);
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contact address {
+  font-style: normal;
+  line-height: 1.7;
+}
+
+/* ---------- panels / embeds --------------------------------------------- */
+
+.panel {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.calendar-frame {
+  width: 100%;
+  height: 640px;
+  border: 0;
+  display: block;
+}
+
+.notice {
+  background: var(--wash);
+  border-left: 4px solid var(--brand);
+  padding: 16px 20px;
+  margin: 22px 0 0;
+  font-size: 0.95rem;
+}
+
+.notice p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- footer ------------------------------------------------------- */
+
+.site-foot {
+  background: var(--brand);
+  color: #fff;
+  padding: 40px 0 34px;
+  margin-top: 20px;
+}
+
+.site-foot__inner {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  flex-wrap: wrap;
+}
+
+.site-foot a {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.site-foot h3 {
+  margin: 0 0 8px;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.site-foot__block p {
+  margin: 0;
+}
+
+.socials {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.socials a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.socials a:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.socials img {
+  width: 20px;
+  height: 20px;
+}
+
+/* Social badges sitting on a light background: the rescued icons are the
+   white variants, so they need a coloured disc behind them. Must come
+   after the rule above, which it ties with on specificity. */
+.socials--onlight a {
+  background: var(--brand);
+}
+
+.socials--onlight a:hover,
+.socials--onlight a:focus {
+  background: var(--brand-dark);
+}
+
+.usu {
+  margin-left: auto;
+  text-align: right;
+}
+
+/* The "Supported by USU" mark is white-on-transparent, drawn for the
+   coloured footer bar — it must not sit on a light background. */
+.usu img {
+  width: 200px;
+}
+
+.site-foot__legal {
+  max-width: var(--wrap);
+  margin: 30px auto 0;
+  padding: 18px 24px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ---------- responsive --------------------------------------------------- */
+
+@media (max-width: 760px) {
+  .nav-toggle {
+    display: block;
+  }
+
+  .nav {
+    display: none;
+    width: 100%;
+    margin-left: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .nav.is-open {
+    display: flex;
+  }
+
+  .nav a {
+    padding: 12px 8px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .hero {
+    min-height: 260px;
+  }
+
+  .section {
+    padding: 40px 0;
+  }
+
+  .site-foot__inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .usu {
+    margin-left: 0;
+    text-align: left;
+  }
+
+  .calendar-frame {
+    height: 480px;
+  }
+}
+
+@media print {
+  .topbar,
+  .site-foot,
+  .lightbox {
+    display: none;
+  }
+}
