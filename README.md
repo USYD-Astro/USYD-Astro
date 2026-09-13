@@ -39,7 +39,7 @@ submit.html     Submit Photos  home.html     legacy /home alias
 assets/css/     stylesheet     assets/js/    nav, lightbox, submission form
 assets/data/    gallery.yml — the photo manifest
 assets/img/     rescued images, gallery originals and generated thumbnails
-tools/          gallery.py — builds thumbnails and the gallery markup
+tools/          gallery.py — builds thumbnails, hero slides and the gallery markup
 .github/        CI check that the gallery stays in sync
 reference/      provenance: original HTML, archive HTML, rescue scripts
 ```
@@ -50,18 +50,19 @@ repeated.
 
 ## Photo gallery and submissions
 
-The home page gallery is **generated, not hand-written**. Four things
+The home page gallery is **generated, not hand-written**. Five things
 describe it, and `tools/gallery.py` keeps them in agreement:
 
 | Path | Role |
 | --- | --- |
 | `assets/data/gallery.yml` | the manifest — which photos, their alt text and credit |
 | `assets/img/events/` | the full-size originals the lightbox shows |
-| `assets/img/events/thumbs/` | 480 px thumbnails the grid loads |
-| `index.html` | the markup between the `gallery:start` and `gallery:end` markers |
+| `assets/img/events/thumbs/` | 480 px thumbnails the grid and hero small-screens load |
+| `assets/img/hero-slides/` | 1280 px derivatives the hero slideshow loads |
+| `index.html` | the markup between the `gallery:start`/`gallery:end` and `hero:start`/`hero:end` markers |
 
 ```bash
-python3 tools/gallery.py sync     # rebuild thumbnails and markup from the manifest
+python3 tools/gallery.py sync     # rebuild thumbnails, hero slides and markup from the manifest
 python3 tools/gallery.py check    # fail if the four have drifted apart
 ```
 
@@ -72,7 +73,11 @@ manifest entry is caught (`.github/workflows/gallery.yml`).
 This replaced nineteen hand-written `<button>` elements that pointed at
 full-resolution originals, which meant the grid downloaded 7.65 MB of images
 to display thumbnails. It now loads about 0.5 MB, and the originals are still
-what the lightbox opens.
+what the lightbox opens. The hero band reuses the same derivatives: it
+crossfades through the gallery photos one at a time, loading each 1280 px
+slide only when the show reaches it (the 480 px thumbnail serves small
+screens), and it keeps still entirely for visitors who prefer reduced
+motion.
 
 ### Adding a submitted photo
 
@@ -196,7 +201,14 @@ site away from the 2025-03-16 capture rather than toward it:
 - **Sign Up merged into Home** — the standalone `signup.html` was removed
   and its content moved to the home page, between the events and gallery
   sections.
-- **Blog removed** — the original nav linked to `blog.usydastro.au`, a
+- **Hero slideshow** — the home page hero no longer shows Matthew D'Souza's
+  static photo (the band had been sitting empty since the photo was hidden).
+  It now crossfades through the event gallery photos, one every few seconds,
+  so the band works for a living: same treatment the original gave the
+  carousel, fed from the same manifest that drives the grid below it. The
+  credit line under the title now reads "Photos from our stargazing trips
+  and events"; `hero-home.jpg` stays in `assets/img/` as part of the rescued
+  set but is no longer referenced.
   separate subdomain that is dead and was never archived. The nav item and
   its placeholder page have been removed.
 - **Events removed** — the standalone `events.html` was deleted. It held the
