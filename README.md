@@ -103,8 +103,8 @@ browser   --POST multipart-->  relay  --GitHub API-->  submissions branch
    and **dropping every EXIF tag** — including the GPS coordinates phones
    write into every photo.
 2. It POSTs the prepared files to a small Cloudflare Worker in `relay/`, which
-   verifies a Turnstile captcha, refuses oversized or non-image uploads, and
-   commits the result to a `submissions` branch.
+   checks the origin, refuses oversized or non-image uploads, and commits the
+   result to a `submissions` branch.
 3. That push triggers `.github/workflows/publish-submission.yml`, which runs
    the same `gallery.py` processing a hand-added photo gets — stripping
    metadata a second time, generating the thumbnail and appending the manifest
@@ -115,7 +115,7 @@ a credential: anything in the page is readable by anyone, and a token committed
 to a public repository is revoked by GitHub's secret scanning. Nor can the
 browser fetch its own token — GitHub's OAuth endpoints reject cross-origin
 requests — so the secret has to sit somewhere the public cannot read it.
-**Deploying the relay is a one-time five-minute job: see `relay/README.md`.**
+**Deploying the relay is a one-time three-minute job: see `relay/README.md`.**
 Until it is done the form says uploads are not switched on, rather than
 failing halfway through.
 
@@ -123,8 +123,12 @@ Things to know when maintaining it:
 
 - **Contact details never reach the published site.** Name and email are
   written to `submission.json` on the `submissions` branch, which Pages does
-  not serve. Only the credit line reaches `gallery.yml`. The workflow verifies
-  this by never adding `submission.json` to the manifest.
+  not serve. Only the credit line reaches `gallery.yml`.
+- **There is no captcha.** The barriers are the consent checkbox, the required
+  name and reply address, and the relay's origin/size/type/count limits —
+  enforced server-side, so a crafted request cannot skip them. A Turnstile
+  widget can be added to the relay later without touching anything else if
+  spam ever becomes a problem.
 - **Submissions publish automatically.** To review them first instead, change
   the trigger in `.github/workflows/publish-submission.yml` to
   `workflow_dispatch` only — pending submissions then wait on the branch until

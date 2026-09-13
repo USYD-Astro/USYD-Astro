@@ -6,15 +6,15 @@ is readable by anyone, and a token committed to a public repository is revoked
 by GitHub's secret scanning. So the credential lives here, on a small Worker
 that the browser talks to, and the browser never sees it.
 
-What it does, in order: checks the origin, checks the captcha, refuses
-oversized or non-image uploads, and commits what is left to a `submissions`
-branch. It deliberately does **not** touch image bytes — the browser has
-already re-encoded each photo, and the publishing Action re-encodes again, so
-metadata is stripped at both ends.
+What it does, in order: checks the origin, refuses oversized or non-image
+uploads, and commits what is left to a `submissions` branch. It deliberately
+does **not** touch image bytes — the browser has already re-encoded each photo,
+and the publishing Action re-encodes again, so metadata is stripped at both
+ends.
 
 ```
 browser  --POST multipart-->  relay (Cloudflare Worker)
-                                 |  verifies Turnstile
+                                 |  checks the origin
                                  |  validates size, type and count
                                  v
                               GitHub API  -->  submissions branch
@@ -24,9 +24,16 @@ browser  --POST multipart-->  relay (Cloudflare Worker)
                                      assets/img/events + gallery.yml + index.html
 ```
 
+**There is no captcha, on purpose.** The submitter's name, email and consent
+checkbox — plus strict origin, size, type and count limits — are the barriers;
+adding a widget costs a dashboard visit and a second club of ceremony for a
+hobby-site threat model. If spam ever arrives, a Turnstile widget verified in
+`handler.js` (or a WAF rate-limit rule on the route) slots in without changing
+anything downstream.
+
 ## Deploying it
 
-About five minutes, once. There is no way to avoid this step: the token has to
+About three minutes, once. There is no way to avoid this step: the token has to
 live somewhere the public cannot read it, and that somewhere is this deployment.
 
 ### 1. Make a token scoped to this repository only
@@ -59,33 +66,18 @@ curl https://suas-photo-relay.<your-subdomain>.workers.dev/health
 It answers `configured:false` until the token secret exists, and the form will
 refuse to submit in that state rather than failing halfway through an upload.
 
-### 3. Make a Turnstile widget
+### 2. Point the site at the relay
 
-<https://dash.cloudflare.com/?to=/:account/turnstile>
-
-Add a widget, and under its settings add the site
-`usyd-astro.github.io`. You get two values:
-
-- the **site key** — public, goes in `submit.html`
-- the **secret key** — private, goes on the Worker:
-
-```bash
-wrangler secret put TURNSTILE_SECRET
-```
-
-### 4. Point the site at the relay
-
-In `submit.html`, fill in the two data attributes on the form:
+In `submit.html`, fill in the data attribute on the form:
 
 ```html
 <form class="submit-form" id="photo-form" novalidate
-      data-relay="https://suas-photo-relay.<your-subdomain>.workers.dev/upload"
-      data-turnstile="<your site key>">
+      data-relay="https://suas-photo-relay.<your-subdomain>.workers.dev/upload">
 ```
 
-Both values are public by design. While `data-relay` is empty the form says
-uploads are not switched on yet, rather than letting someone fill the whole
-thing in and then fail.
+The URL is public by design. While `data-relay` is empty the form says uploads
+are not switched on yet, rather than letting someone fill the whole thing in
+and then fail.
 
 ## Testing it
 
@@ -95,8 +87,8 @@ npm test          # node --test test/
 ```
 
 The handler takes `fetch` as an injection point, so the suite runs with no
-Cloudflare, no network and no real token. It covers the validation rules, the
-captcha gate, branch creation, the commit calls, and the failure paths.
+Cloudflare, no network and no real token. It covers the validation rules,
+branch creation, the commit calls, and the failure paths.
 
 To try it end to end without burning a real submission, run `wrangler dev`,
 point `data-relay` at the local URL, and upload something small. Check that:

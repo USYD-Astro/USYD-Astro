@@ -19,7 +19,6 @@ if (!globalThis.crypto) {
 const ENV = {
   GITHUB_TOKEN: "test-token",
   GITHUB_REPO: "USYD-Astro/USYD-Astro",
-  TURNSTILE_SECRET: "test-secret",
   ALLOWED_ORIGIN: "https://usyd-astro.github.io",
   SUBMISSIONS_BRANCH: "submissions",
   BASE_BRANCH: "main",
@@ -38,10 +37,9 @@ function fakeFile(name, type, bytes = [0xff, 0xd8, 0xff]) {
 
 /* A minimal stand-in for a Request: the handler only reads the method, the
    origin header and the parsed form body. */
-function stubRequest({ method = "POST", origin = ORIGIN, meta, photos = [], turnstile } = {}) {
+function stubRequest({ method = "POST", origin = ORIGIN, meta, photos = [] } = {}) {
   const form = new Map();
   form.set("meta", JSON.stringify({ consent: true, name: "Jane", email: "jane@example.com", ...meta }));
-  if (turnstile) form.set("turnstile", turnstile);
   form.set("photos", photos);
   return {
     method,
@@ -53,15 +51,12 @@ function stubRequest({ method = "POST", origin = ORIGIN, meta, photos = [], turn
   };
 }
 
-/* A fake GitHub + Turnstile. Records every call so tests can assert on them. */
-function fakeFetch({ turnstileOk = true, failCommit = false, branchExists = true } = {}) {
+/* A fake GitHub API. Records every call so tests can assert on them. */
+function fakeFetch({ failCommit = false, branchExists = true } = {}) {
   const calls = [];
   const impl = async (url, init = {}) => {
     calls.push({ url: String(url), method: init.method || "GET" });
 
-    if (String(url).includes("challenges.cloudflare.com")) {
-      return new Response(JSON.stringify({ success: turnstileOk }), { status: 200 });
-    }
     if (String(url).includes("/git/ref/heads/")) {
       // Only the submissions branch may be missing; main always exists.
       const isSubmissions = String(url).includes("/heads/submissions");
@@ -182,29 +177,12 @@ test("accepts a photo by extension when the browser sends no type", async () => 
   assert.equal(response.status, 200);
 });
 
-test("stops at a failed captcha, before touching the repository", async () => {
-  const github = fakeFetch({ turnstileOk: false });
-  const response = await handleUpload(
-    stubRequest({ photos: [fakeFile("a.jpg", "image/jpeg")], turnstile: "bad" }),
-    ENV,
-    { fetch: github }
-  );
-  assert.equal(response.status, 400);
-  assert.match((await body(response)).error, /anti-spam/i);
-  assert.equal(
-    github.calls.filter((c) => c.url.includes("api.github.com")).length,
-    0,
-    "must not write anything when the captcha fails"
-  );
-});
-
-test("commits the photos and the details, and reports success", async () => {
+test("commits straight through when it is configured", async () => {
   const github = fakeFetch();
   const response = await handleUpload(
     stubRequest({
       meta: { name: "Jane Citizen", email: "jane@example.com", credit: "Jane C.", caption: "Trivia night" },
       photos: [fakeFile("a.jpg", "image/jpeg"), fakeFile("b.png", "image/png")],
-      turnstile: "good",
     }),
     ENV,
     { fetch: github }
@@ -240,7 +218,7 @@ test("commits the photos and the details, and reports success", async () => {
 test("creates the submissions branch when it does not exist", async () => {
   const github = fakeFetch({ branchExists: false });
   const response = await handleUpload(
-    stubRequest({ photos: [fakeFile("a.jpg", "image/jpeg")], turnstile: "good" }),
+    stubRequest({ photos: [fakeFile("a.jpg", "image/jpeg")] }),
     ENV,
     { fetch: github }
   );
@@ -261,10 +239,19 @@ test("creates the submissions branch when it does not exist", async () => {
 
 test("reports a repository failure instead of claiming success", async () => {
   const response = await handleUpload(
-    stubRequest({ photos: [fakeFile("a.jpg", "image/jpeg")], turnstile: "good" }),
+    stubRequest({ photos: [fakeFile("a.jpg", "image/jpeg")] }),
     ENV,
     { fetch: fakeFetch({ failCommit: true }) }
   );
   assert.equal(response.status, 502);
   assert.match((await body(response)).error, /could not store/i);
+});
+
+test("an upload with no origin header is refused, so it cannot be posted from nowhere", async () => {
+  const response = await handleUpload(
+    stubRequest({ origin: "" , photos: [fakeFile("a.jpg", "image/jpeg")] }),
+    ENV,
+    { fetch: fakeFetch() }
+  );
+  assert.equal(response.status, 403);
 });

@@ -58,14 +58,12 @@
       <h2>Choose your photos</h2>
       <p class="lede">Pick your photos below. Your browser shrinks each one and strips its metadata &mdash; including any location data &mdash; before anything is sent. Nothing leaves your device until you press the button at the end.</p>
 
-      <!-- Upload endpoint. Both values are public by design: the Worker URL and
-           the Turnstile site key are meant to be visible, while the GitHub
-           token and the Turnstile secret stay on the relay. Deploy the relay
-           (see relay/README.md), then fill these two in. While data-relay is
-           empty the form says so plainly instead of failing on submit. -->
+      <!-- Upload endpoint. The Worker URL is public by design; the GitHub
+           token stays on the relay, which is the whole point of the relay.
+           Deploy it (see relay/README.md), then fill this in. While data-relay
+           is empty the form says so plainly instead of failing on submit. -->
       <form class="submit-form" id="photo-form" novalidate
-            data-relay=""
-            data-turnstile="">
+            data-relay="">
 
         <div class="field">
           <label for="photos">Photos</label>
@@ -100,11 +98,8 @@
         <div class="field field--check">
           <input type="checkbox" id="consent" name="consent" required>
           <label for="consent">I took these photos or have permission to share them, and anyone pictured is happy for them to appear on this site.</label>
+          <p class="hint">Photos go straight into the public gallery once they pass this form &mdash; that is exactly what the checkbox promises. Choose with care.</p>
         </div>
-
-        <!-- Turnstile renders here. The relay verifies the token server-side,
-             which is the whole reason the relay exists. -->
-        <div class="turnstile" id="turnstile"></div>
 
         <p class="form-status" id="status" role="status"></p>
 

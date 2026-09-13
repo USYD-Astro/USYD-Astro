@@ -7,8 +7,10 @@ name: Publish photo submissions
 # processed twice. `submission.json` deliberately stays behind: it holds the
 # submitter's name and email, which must never reach the published site.
 #
-# To review submissions before they go live instead of publishing straight
-# away, change the trigger below from a push to workflow_dispatch only.
+# Submissions publish automatically: the relay enforces consent, size, type and
+# count, and the browser strips metadata before anything is sent. To review
+# submissions before they go live instead, change the trigger below to
+# workflow_dispatch only.
 
 on:
   push:
