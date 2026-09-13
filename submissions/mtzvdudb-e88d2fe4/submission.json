@@ -1,0 +1,12 @@
+{
+  "id": "mtzvdudb-e88d2fe4",
+  "received": "2026-09-13T13:48:50.653Z",
+  "name": "Smoke Test",
+  "email": "smoke@test.invalid",
+  "credit": "SUAS smoke test",
+  "caption": "pipeline smoke test - will be removed",
+  "consent": true,
+  "photos": [
+    "01.jpg"
+  ]
+}
