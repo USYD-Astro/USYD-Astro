@@ -89,6 +89,13 @@ site away from the 2025-03-16 capture rather than toward it:
 - **Dark theme** — the page background is black instead of white. This
   forced the text and link colours to be lightened too, because the
   original's dark-on-light palette would otherwise be unreadable.
+- **Full-page backdrop** — the light-painting photo that the original used
+  as the gallery band is now the backdrop for the whole site. It sits on a
+  fixed layer under the content (see `body::before`), so it stays still
+  while the page scrolls over it, and the section bands and panels are
+  translucent so it reads through. A gradient scrim keeps body copy
+  legible: the photo's mean luminance is only ~18%, so the darkening is
+  deliberately light enough that the image is still visible.
 - **About is unlinked** — `about.html` still exists and is served, but
   nothing in the navigation points at it any more.
 - **Navigation** — "Member Sign Up" was renamed to "Sign Up", and that
