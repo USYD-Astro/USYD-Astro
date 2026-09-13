@@ -533,9 +533,18 @@ p {
   background: rgba(255, 255, 255, 0.3);
 }
 
-.socials img {
+.socials img,
+.socials svg {
   width: 20px;
   height: 20px;
+  display: block;
+}
+
+/* Discord and email are inline SVG rather than the rescued white PNGs, so
+   they need an explicit fill (the discs behind them are always brand blue,
+   which means currentColor would come out dark on the light backgrounds). */
+.socials svg {
+  fill: #fff;
 }
 
 /* Social badges sitting on a light background: the rescued icons are the
