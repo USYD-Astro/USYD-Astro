@@ -35,7 +35,7 @@ including the 19 event photos and the 11 committee portraits.
 
 ```
 index.html      Home          about.html    About
-events.html     Events        signup.html   Member Sign Up
+events.html     Events        signup.html   Sign Up
 blog.html       Blog          home.html     legacy /home alias
 assets/css/     stylesheet    assets/js/    nav + lightbox
 assets/img/     rescued images
@@ -83,6 +83,22 @@ Three deliberate departures:
    gone, so the page carries the same information as static content.
 3. **Google Sites chrome** — the "Google Sites / Report abuse" footer is
    replaced with society attribution.
+
+## Later changes
+
+Applied after the recreation, at the society's request. These move the
+site away from the 2025-03-16 capture rather than toward it:
+
+- **Dark theme** — the page background is black instead of white. This
+  forced the text and link colours to be lightened too, because the
+  original's dark-on-light palette would otherwise be unreadable.
+- **About is unlinked** — `about.html` still exists and is served, but
+  nothing in the navigation points at it any more.
+- **Navigation** — "Member Sign Up" was renamed to "Sign Up".
+- **Footer** — the generic link icon Google Sites supplied was replaced
+  with a real Discord mark; the email address moved out of the fine print
+  into the icon row, whose heading became "Contact"; and the bottom line
+  now carries a copyright and a credit.
 
 ## Third-party embeds
 
