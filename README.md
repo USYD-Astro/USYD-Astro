@@ -199,7 +199,7 @@ site away from the 2025-03-16 capture rather than toward it:
 | --- | --- |
 | facebook.com/usydastronomy | live |
 | instagram.com/usydastro | live |
-| discord.gg/nGVW4qJMSV | dead invite |
+| discord.gg/nGVW4qJMSV | live — 510 members, checked 2026-09-13 |
 | usu.edu.au/clubs/astronomy-society | 404 — the old address, superseded |
 | usu.edu.au/clubs/suas | live — the current club page |
 
