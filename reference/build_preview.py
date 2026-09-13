@@ -41,17 +41,32 @@ def data_uri(rel: str) -> str:
 def build(page: str) -> pathlib.Path:
     src = (ROOT / f"{page}.html").read_text()
 
-    # 1. inline the stylesheet
+    # 1. inline the stylesheet alongside its url(...) references. Those are
+    #    written relative to the CSS file (e.g. ../img/events-banner.jpg), so
+    #    resolve them against the stylesheet's own directory.
     def css_inline(m):
-        css = (ROOT / m.group(1)).read_text()
-        # inline url(...) references inside the CSS
-        css = re.sub(
-            r"url\((['\"]?)([^'\")]+)\1\)",
-            lambda mm: f"url('{data_uri(mm.group(2))}')"
-            if mm.group(2).startswith("assets/")
-            else mm.group(0),
-            css,
-        )
+        css_path = ROOT / m.group(1)
+        css = css_path.read_text()
+        base = css_path.parent.relative_to(ROOT)
+
+        def resolve(url: str):
+            if url.startswith(("http:", "https:", "//", "data:")):
+                return None
+            parts: list[str] = []
+            for part in (base / url).parts:
+                if part == "..":
+                    if parts:
+                        parts.pop()
+                elif part != ".":
+                    parts.append(part)
+            rel = pathlib.Path(*parts)
+            return str(rel) if (ROOT / rel).exists() else None
+
+        def swap(mm):
+            rel = resolve(mm.group(2))
+            return f"url('{data_uri(rel)}')" if rel else mm.group(0)
+
+        css = re.sub(r"url\((['\"]?)([^'\")]+)\1\)", swap, css)
         return f"<style>\n{css}\n</style>"
 
     src = re.sub(r'<link rel="stylesheet" href="([^"]+)">', css_inline, src)
