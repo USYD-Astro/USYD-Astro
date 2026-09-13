@@ -199,12 +199,28 @@ site away from the 2025-03-16 capture rather than toward it:
 | --- | --- |
 | facebook.com/usydastronomy | live |
 | instagram.com/usydastro | live |
-| usu.edu.au/clubs/astronomy-society | 404 |
 | discord.gg/nGVW4qJMSV | dead invite |
+| usu.edu.au/clubs/astronomy-society | 404 — the old address, superseded |
+| usu.edu.au/clubs/suas | live — the current club page |
 
 Original links are preserved as-is rather than "fixed", since the point is
 to reproduce the site rather than correct it. Contributions should not
 silently repoint them.
+
+### The USU link is the one exception
+
+The club page is repointed rather than preserved, because it is the only
+external link on the site that carries real load: the "Sign Up" navigation
+item and both "join the society" calls to action point at it, so a 404 there
+left the site's primary purpose broken.
+
+USU moved club pages onto its MyUSU system and shortened the club's slug from
+the descriptive `astronomy-society` to `suas`. The current address is
+<https://usu.edu.au/clubs/suas>, which is what USU's own club directory links
+to and which resolves without a login. Further in, the signup listing lives at
+<https://clubs.usu.edu.au/SUAS/club_signup> — note that this is the group
+list rather than a form, and joining from it requires being signed in to
+MyUSU, so it is deliberately not the link used on the site.
 
 ## Photo credits
 
