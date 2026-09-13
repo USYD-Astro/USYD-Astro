@@ -1,0 +1,40 @@
+name: Gallery check
+
+# The gallery is generated, so the three things that describe it -- the
+# manifest, the thumbnails and the markup between the gallery:start and
+# gallery:end markers in index.html -- can drift apart. This catches that:
+# most often a photo dropped into assets/img/events/ by hand with no manifest
+# entry, or a stale thumbnail after replacing a photo.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "assets/img/events/**"
+      - "assets/data/gallery.yml"
+      - "index.html"
+      - "tools/gallery.py"
+      - ".github/workflows/gallery.yml"
+  pull_request:
+    paths:
+      - "assets/img/events/**"
+      - "assets/data/gallery.yml"
+      - "index.html"
+      - "tools/gallery.py"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the tooling
+        run: pip install --quiet --disable-pip-version-check pillow pyyaml
+
+      - name: Verify the manifest, thumbnails and markup agree
+        run: python3 tools/gallery.py check

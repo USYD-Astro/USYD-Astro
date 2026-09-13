@@ -8,7 +8,16 @@ reference/contact-sheet.html
 # bytes under meaningful names. Re-derivable via reference/rescue_images.py.
 reference/originals/
 
+# Contributor contact details recorded by tools/gallery.py add --email. The
+# whole repository is published by GitHub Pages, so anything tracked here
+# would be public. Keep addresses out of the repo entirely.
+submissions/
+
 # OS / editor noise
 .DS_Store
 Thumbs.db
 *.swp
+
+# Python bytecode from tools/
+__pycache__/
+*.pyc

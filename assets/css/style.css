@@ -501,10 +501,196 @@ p {
   margin-bottom: 0;
 }
 
+/* ---------- photo submission form ---------------------------------------- */
+
+.submit-form {
+  margin-top: 26px;
+  max-width: 720px;
+}
+
+.field {
+  margin-bottom: 20px;
+}
+
+.field label {
+  display: block;
+  font-family: var(--font-head);
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+
+.field input[type="text"],
+.field input[type="email"],
+.field textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: rgba(10, 10, 10, 0.72);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 11px 13px;
+}
+
+.field input[type="file"] {
+  width: 100%;
+  font: inherit;
+  color: var(--muted);
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 1px;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0 20px;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 6px 0 0;
+}
+
+.field--check {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  max-width: 60ch;
+}
+
+.field--check input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 5px;
+}
+
+.field--check label {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Honeypot. Pushed off-screen rather than display:none, because a crude bot
+   will happily fill a field it can see but skip one that is not rendered. */
+.field--trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.previews {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+}
+
+.previews:empty {
+  display: none;
+}
+
+.previews li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.previews img {
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.previews__meta {
+  font-size: 0.92rem;
+}
+
+.previews__dims {
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.button {
+  font: inherit;
+  font-family: var(--font-head);
+  font-size: 1rem;
+  color: #fff;
+  background: var(--brand);
+  border: 1px solid var(--brand);
+  border-radius: 6px;
+  padding: 12px 22px;
+  cursor: pointer;
+}
+
+.button:hover,
+.button:focus-visible {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
+}
+
+.button--ghost {
+  color: var(--link);
+  background: none;
+  border-color: var(--rule);
+}
+
+.button--ghost:hover,
+.button--ghost:focus-visible {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--link);
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.form-status {
+  min-height: 1.4em;
+  margin: 4px 0 18px;
+  font-size: 0.95rem;
+}
+
+.form-status--ok {
+  color: #9be7a8;
+}
+
+.form-status--warn {
+  color: #ffd479;
+}
+
 /* ---------- footer ------------------------------------------------------- */
 
 .site-foot {
-  background: var(--brand);
+  /* Matches the topbar: translucent dark surface and a hairline rule, rather
+     than the original solid brand-blue bar (which was too bright for the
+     dark theme). */
+  background: var(--surface);
+  border-top: 1px solid var(--rule);
   color: #fff;
   padding: 40px 0 34px;
   margin-top: 20px;

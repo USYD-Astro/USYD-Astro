@@ -1,0 +1,79 @@
+# Photo gallery manifest.
+#
+# This file is the single source of truth for what appears in the gallery on
+# the home page. `tools/gallery.py` reads it to generate the grid thumbnails
+# and the markup between the gallery:start / gallery:end markers in index.html.
+#
+# Do not reorder or hand-edit generated markup -- run the tool instead:
+#
+#   python3 tools/gallery.py sync     # rebuild thumbs + markup from this file
+#   python3 tools/gallery.py add FILE # add newly submitted photos
+#   python3 tools/gallery.py check    # verify this file, the thumbs and the markup agree
+#
+# Fields:
+#   file    (required) filename inside assets/img/events/
+#   alt     (required) alternative text, for screen readers
+#   credit  (optional) how the photographer wants to be credited
+#   date    (optional) YYYY-MM-DD, used for ordering if you ever sort by date
+#
+# Note that contributor email addresses are deliberately NOT stored here: this
+# file is published with the site. Contact details live in submissions/ instead.
+
+photos:
+  - file: 01.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 02.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 03.png
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 04.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 05.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 06.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 07.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 08.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 09.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 10.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 11.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 12.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 13.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 14.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 15.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 16.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 17.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 18.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
+  - file: 19.jpg
+    alt: "Photo from a previous SUAS event"
+    credit: ""
