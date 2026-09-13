@@ -87,33 +87,52 @@ manifest entry and regenerates the markup. Commit and push, and the photo is
 live. The tool only ever *appends* to the manifest, so hand-written comments
 in it survive.
 
-### How visitors send photos
+### How visitors upload photos
 
-`submit.html` is the public door. It is a hand-off rather than an upload: the
-visitor's browser shrinks each photo and strips its metadata, then passes the
-prepared files to their own email app — through the OS share sheet
-(`navigator.share` with files, the normal path on a phone) or a pre-filled
-`mailto:`.
+`submit.html` is the public door and it is a real upload. The path is:
 
-It has to work that way. A static site has nowhere to put uploaded bytes, and
-a public page cannot hold a credential that would let it commit to this
-repository: anything in the page is readable by anyone, and a committed
-`github_pat_` is revoked by GitHub's secret scanning regardless. Getting a
-GitHub token into a browser needs a server-side relay, because GitHub's OAuth
-endpoints reject cross-origin requests. A serverless function holding a
-fine-grained token in a secret would allow genuine anonymous upload with a
-server-verified captcha — that is the upgrade path, and it would replace only
-the hand-off, leaving the manifest and tooling untouched.
+```
+browser   --POST multipart-->  relay  --GitHub API-->  submissions branch
+                                                        |
+                              .github/workflows/publish-submission.yml
+                                                        v
+                              assets/img/events + gallery.yml + index.html
+```
 
-Three things to know when maintaining it:
+1. The browser re-encodes each photo through a canvas, capping it at 1600 px
+   and **dropping every EXIF tag** — including the GPS coordinates phones
+   write into every photo.
+2. It POSTs the prepared files to a small Cloudflare Worker in `relay/`, which
+   verifies a Turnstile captcha, refuses oversized or non-image uploads, and
+   commits the result to a `submissions` branch.
+3. That push triggers `.github/workflows/publish-submission.yml`, which runs
+   the same `gallery.py` processing a hand-added photo gets — stripping
+   metadata a second time, generating the thumbnail and appending the manifest
+   entry — commits to `main`, and clears the photos off the submissions branch.
 
-- **No captcha, deliberately.** Verifying one needs a server. The form carries
-  a honeypot field instead, and the email hand-off is itself a spam barrier.
-- **Contact details are never committed.** `add --email` writes them to
-  `submissions/contacts.yml`, which is gitignored, because the whole
-  repository is published by GitHub Pages.
-- **Consent is a required checkbox.** Nothing joins the gallery until a
-  committee member runs `add`, so submissions are curated by default.
+The relay exists because Pages cannot accept an upload and the page cannot hold
+a credential: anything in the page is readable by anyone, and a token committed
+to a public repository is revoked by GitHub's secret scanning. Nor can the
+browser fetch its own token — GitHub's OAuth endpoints reject cross-origin
+requests — so the secret has to sit somewhere the public cannot read it.
+**Deploying the relay is a one-time five-minute job: see `relay/README.md`.**
+Until it is done the form says uploads are not switched on, rather than
+failing halfway through.
+
+Things to know when maintaining it:
+
+- **Contact details never reach the published site.** Name and email are
+  written to `submission.json` on the `submissions` branch, which Pages does
+  not serve. Only the credit line reaches `gallery.yml`. The workflow verifies
+  this by never adding `submission.json` to the manifest.
+- **Submissions publish automatically.** To review them first instead, change
+  the trigger in `.github/workflows/publish-submission.yml` to
+  `workflow_dispatch` only — pending submissions then wait on the branch until
+  somebody runs the workflow.
+- **Consent is a required checkbox**, enforced in the relay rather than only in
+  the browser, so a crafted request cannot skip it.
+- **The relay is not a static dependency.** Nothing on the published site calls
+  it except the upload form.
 
 ## Running locally
 

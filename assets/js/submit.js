@@ -1,22 +1,23 @@
 /* Photo submission.
-
-   The site is static, so there is nowhere to POST a photo to. This script
-   therefore does the two things a browser can usefully do on its own:
-
-     1. shrink each photo and drop its metadata, and
-     2. hand the prepared files to the visitor's own email app.
-
-   Step 1 matters more than it looks. Re-encoding through a canvas writes a
-   brand new JPEG and carries no EXIF across, so the GPS coordinates that
-   phones attach to every photo never leave the device. There is no library
-   here doing that -- it falls out of the re-encode.
-
-   Files are prepared when they are *selected*, not when the form is
-   submitted, because navigator.share() must be called while the click that
-   triggered it is still the current user gesture. Awaiting a resize inside
-   the submit handler would lose that gesture and the share sheet would never
-   open.
-*/
+ *
+ * Two things happen here, in this order:
+ *
+ *   1. Each photo is re-encoded through a canvas, which caps its size and
+ *      drops every EXIF tag. That is a privacy step, not a nicety: phones
+ *      write GPS coordinates into every photo, and a canvas re-encode writes
+ *      brand new bytes with no metadata carried across. The relay strips
+ *      metadata again on the way in, so this is defence in depth rather than
+ *      the only line.
+ *
+ *   2. The prepared photos are POSTed to the upload relay. Pages cannot
+ *      accept an upload and no credential can live in this page, so a small
+ *      Worker holds the GitHub token and commits the submission for us. See
+ *      relay/README.md. The endpoint is configured on the form element.
+ *
+ * Files are prepared when they are *selected* rather than when the form is
+ * submitted, so that pressing the button starts the upload immediately
+ * instead of making the visitor watch a progress bar that is really a resize.
+ */
 (function () {
   "use strict";
 
@@ -25,19 +26,24 @@
     return;
   }
 
-  /* Read fields via getElementById rather than form.<name>: HTMLFormElement
-     has its own `name` property, so form.name returns the form's name
-     attribute rather than the input called "name". */
+  var RELAY = form.dataset.relay || "";
+  var TURNSTILE_SITE_KEY = form.dataset.turnstile || "";
+
+  var THUMB_EDGE = 1600;
+  var QUALITY = 0.82;
+  var MAX_FILES = 8;
+
+  /* Read fields by id rather than form.<name>: HTMLFormElement has its own
+     `name` property, so form.name is the form's name attribute rather than
+     the input called "name". */
   var input = document.getElementById("photos");
   var previews = document.getElementById("previews");
   var statusLine = document.getElementById("status");
-  var downloadBtn = document.getElementById("download");
-
-  var EMAIL = "usydastronomy@gmail.com";
-  var LONG_EDGE = 1600;
-  var QUALITY = 0.82;
+  var submitBtn = document.getElementById("send");
+  var turnstileBox = document.getElementById("turnstile");
 
   var prepared = [];
+  var turnstileToken = "";
 
   function human(bytes) {
     return bytes >= 1048576
@@ -50,9 +56,16 @@
     statusLine.className = "form-status" + (kind ? " form-status--" + kind : "");
   }
 
+  function value(id) {
+    var el = document.getElementById(id);
+    return el ? el.value.trim() : "";
+  }
+
+  /* ---- prepare each photo on selection --------------------------------- */
+
   function shrink(file) {
     return createImageBitmap(file).then(function (bitmap) {
-      var scale = Math.min(1, LONG_EDGE / Math.max(bitmap.width, bitmap.height));
+      var scale = Math.min(1, THUMB_EDGE / Math.max(bitmap.width, bitmap.height));
       var width = Math.max(1, Math.round(bitmap.width * scale));
       var height = Math.max(1, Math.round(bitmap.height * scale));
 
@@ -80,10 +93,6 @@
     });
   }
 
-  function asFile(entry) {
-    return new File([entry.blob], entry.name, { type: "image/jpeg" });
-  }
-
   function render() {
     previews.innerHTML = "";
     prepared.forEach(function (entry) {
@@ -101,12 +110,10 @@
         " \u2192 " + human(entry.reduced);
       item.appendChild(meta);
 
-      if (entry.width) {
-        var dims = document.createElement("span");
-        dims.className = "previews__dims";
-        dims.textContent = entry.width + "\u00d7" + entry.height;
-        item.appendChild(dims);
-      }
+      var dims = document.createElement("span");
+      dims.className = "previews__dims";
+      dims.textContent = entry.width + "\u00d7" + entry.height;
+      item.appendChild(dims);
 
       previews.appendChild(item);
     });
@@ -116,30 +123,29 @@
     var files = Array.prototype.slice.call(input.files || []);
     prepared = [];
     previews.innerHTML = "";
-    downloadBtn.hidden = true;
 
     if (!files.length) {
       say("");
       return;
     }
-
-    /* No createImageBitmap: send the originals and be honest about it. */
-    if (typeof createImageBitmap !== "function") {
-      prepared = files.map(function (file) {
-        return {
-          name: file.name,
-          blob: file,
-          original: file.size,
-          reduced: file.size,
-          width: 0,
-          height: 0
-        };
-      });
-      render();
+    if (files.length > MAX_FILES) {
       say(
-        "This browser can\u2019t shrink photos before sending, so the originals " +
-          "will be used and they may still contain location data. If that " +
-          "matters to you, use the email option at the bottom of the page instead.",
+        "Please choose at most " + MAX_FILES + " photos at a time \u2014 you sent " +
+          files.length + ". Send them in a couple of batches.",
+        "warn"
+      );
+      input.value = "";
+      return;
+    }
+
+    /* No createImageBitmap: we cannot strip metadata here, so say so rather
+       than quietly sending photos with the submitter's home address in them. */
+    if (typeof createImageBitmap !== "function") {
+      prepared = [];
+      input.value = "";
+      say(
+        "This browser can\u2019t prepare photos before sending, so uploading is " +
+          "unavailable here. Please try a newer browser.",
         "warn"
       );
       return;
@@ -147,11 +153,11 @@
 
     say("Preparing " + files.length + " photo" + (files.length === 1 ? "" : "s") + "\u2026");
 
-    var jobs = files.map(function (file) {
+    var jobs = files.map(function (file, index) {
       return shrink(file)
         .then(function (result) {
           return {
-            name: (file.name || "photo").replace(/\.[^.]+$/, "") + ".jpg",
+            name: "photo-" + (index + 1) + ".jpg",
             blob: result.blob,
             original: file.size,
             reduced: result.blob.size,
@@ -182,126 +188,163 @@
     });
   });
 
-  function message() {
-    var credit = document.getElementById("credit").value.trim();
-    var caption = document.getElementById("caption").value.trim();
-    var lines = [
-      "Name: " + document.getElementById("name").value.trim(),
-      "Email: " + document.getElementById("email").value.trim(),
-      "Credit as: " + (credit || "(no preference)"),
-      "",
-      "Photos: " + prepared.length,
-      ""
-    ];
-    if (caption) {
-      lines.push("Notes:");
-      lines.push(caption);
-      lines.push("");
+  /* ---- Turnstile -------------------------------------------------------- */
+
+  function turnstileReady() {
+    if (!TURNSTILE_SITE_KEY || !window.turnstile) {
+      return Boolean(turnstileToken);
     }
-    lines.push(
-      "I confirm I took these photos or have permission to share them, and " +
-        "that anyone pictured is happy for them to appear on the SUAS website."
-    );
-    return lines.join("\n");
+    try {
+      window.turnstile.render(turnstileBox, {
+        sitekey: TURNSTILE_SITE_KEY,
+        callback: function (token) {
+          turnstileToken = token;
+        },
+        "expired-callback": function () {
+          turnstileToken = "";
+        },
+        "error-callback": function () {
+          turnstileToken = "";
+        }
+      });
+    } catch (error) {
+      /* Already rendered, or the widget failed; leave the token empty so the
+         submit path reports it rather than silently sending without one. */
+    }
+    return false;
   }
 
-  function openMail() {
-    var subject = "Photo submission for the SUAS gallery";
-    window.location.href =
-      "mailto:" + EMAIL +
-      "?subject=" + encodeURIComponent(subject) +
-      "&body=" + encodeURIComponent(message());
-    downloadBtn.hidden = false;
-    say(
-      "Your email app should have opened with the details filled in. " +
-        "Attach the prepared photos, or use the download button, then send.",
-      "ok"
-    );
+  if (TURNSTILE_SITE_KEY) {
+    var script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.defer = true;
+    script.onload = turnstileReady;
+    document.head.appendChild(script);
   }
 
-  downloadBtn.addEventListener("click", function () {
-    prepared.forEach(function (entry, index) {
-      window.setTimeout(function () {
-        var url = URL.createObjectURL(entry.blob);
-        var link = document.createElement("a");
-        link.href = url;
-        link.download = entry.name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.setTimeout(function () {
-          URL.revokeObjectURL(url);
-        }, 1000);
-      }, index * 250);
+  /* ---- upload ----------------------------------------------------------- */
+
+  function buildForm() {
+    var body = new FormData();
+    body.append(
+      "meta",
+      JSON.stringify({
+        name: value("name"),
+        email: value("email"),
+        credit: value("credit"),
+        caption: value("caption"),
+        consent: document.getElementById("consent").checked,
+        turnstile: turnstileToken
+      })
+    );
+    prepared.forEach(function (entry) {
+      body.append("photos", entry.blob, entry.name);
     });
-  });
+    return body;
+  }
+
+  function fail(message) {
+    say(message, "warn");
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Send my photos";
+  }
+
+  function succeed(message) {
+    say(message, "ok");
+    form.reset();
+    prepared = [];
+    previews.innerHTML = "";
+    turnstileToken = "";
+    if (window.turnstile && TURNSTILE_SITE_KEY) {
+      try {
+        window.turnstile.reset(turnstileBox);
+      } catch (error) {
+        /* nothing useful to do */
+      }
+    }
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Send my photos";
+  }
+
+  function upload(body) {
+    var request = new XMLHttpRequest();
+    request.open("POST", RELAY);
+    request.responseType = "json";
+
+    request.upload.addEventListener("progress", function (event) {
+      if (!event.lengthComputable) {
+        return;
+      }
+      var percent = Math.round((event.loaded / event.total) * 100);
+      submitBtn.textContent = "Sending\u2026 " + percent + "%";
+      say("Uploading your photos\u2026 " + percent + "%");
+    });
+
+    request.addEventListener("load", function () {
+      var response = request.response;
+      if (request.status >= 200 && request.status < 300 && response && response.ok) {
+        succeed(response.message || "Thanks \u2014 your photos are with us.");
+        return;
+      }
+      fail(
+        (response && response.error) ||
+          "Something went wrong on our side (server said " + request.status + "). Please try again."
+      );
+    });
+
+    request.addEventListener("error", function () {
+      fail("We could not reach the upload service. Check your connection and try again.");
+    });
+
+    request.addEventListener("timeout", function () {
+      fail("The upload timed out. Please try again, perhaps with fewer photos at once.");
+    });
+
+    request.send(body);
+  }
 
   form.addEventListener("submit", function (event) {
     event.preventDefault();
 
-    /* Honeypot: only a bot fills a field it cannot see. */
-    if (document.getElementById("website").value) {
-      say("Thanks \u2014 your photos are on their way.", "ok");
+    if (!RELAY) {
+      fail("Uploads are not switched on yet. Please try again later.");
       return;
     }
-
-    var name = document.getElementById("name").value.trim();
-    var email = document.getElementById("email").value.trim();
-    var consent = document.getElementById("consent").checked;
-
     if (!prepared.length) {
       say("Choose at least one photo first.", "warn");
       input.focus();
       return;
     }
-    if (!name) {
+    if (!value("name")) {
       say("We need a name to credit the photos to.", "warn");
       document.getElementById("name").focus();
       return;
     }
-    if (!email || email.indexOf("@") < 1) {
+    if (!value("email") || value("email").indexOf("@") < 1) {
       say("We need an email address so we can reply.", "warn");
       document.getElementById("email").focus();
       return;
     }
-    if (!consent) {
+    if (!document.getElementById("consent").checked) {
       say("Please confirm the consent box before sending.", "warn");
       document.getElementById("consent").focus();
       return;
     }
-
-    var files = prepared.map(asFile);
-
-    /* Best case: the OS share sheet opens with the photos already attached,
-       and the visitor picks Mail. This is the normal path on a phone. */
-    if (navigator.canShare) {
-      var shareable = false;
-      try {
-        shareable = navigator.canShare({ files: files });
-      } catch (error) {
-        shareable = false;
-      }
-      if (shareable) {
-        navigator
-          .share({
-            files: files,
-            title: "Photos for the SUAS gallery",
-            text: message()
-          })
-          .then(function () {
-            say("Thanks \u2014 send that and we\u2019ll add them to the gallery.", "ok");
-          })
-          .catch(function (error) {
-            /* AbortError means they closed the sheet on purpose. */
-            if (error && error.name === "AbortError") {
-              return;
-            }
-            openMail();
-          });
-        return;
-      }
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      say("Please wait for the anti-spam check to finish, then try again.", "warn");
+      return;
     }
 
-    openMail();
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Sending\u2026";
+    say("Uploading your photos\u2026");
+    upload(buildForm());
   });
+
+  /* Show the visitor why the button does nothing, rather than letting them
+     fill the whole form in first. */
+  if (!RELAY) {
+    say("Uploads are not switched on yet.", "warn");
+  }
 })();

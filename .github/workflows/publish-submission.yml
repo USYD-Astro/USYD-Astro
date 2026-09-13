@@ -1,0 +1,94 @@
+name: Publish photo submissions
+
+# The upload relay commits each submission to a `submissions` branch, which
+# Pages does not serve. This turns whatever is waiting there into gallery
+# entries on main, using the same tools/gallery.py path a hand-added photo
+# takes, and then clears the images off the submissions branch so they are not
+# processed twice. `submission.json` deliberately stays behind: it holds the
+# submitter's name and email, which must never reach the published site.
+#
+# To review submissions before they go live instead of publishing straight
+# away, change the trigger below from a push to workflow_dispatch only.
+
+on:
+  push:
+    branches: [submissions]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-photo-submissions
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the published branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the gallery tooling
+        run: pip install --quiet --disable-pip-version-check pillow pyyaml
+
+      - name: Collect what is waiting on the submissions branch
+        id: incoming
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin submissions
+          mkdir -p /tmp/incoming
+          git archive origin/submissions submissions | tar -x -C /tmp/incoming
+          waiting=$(find /tmp/incoming/submissions -mindepth 2 -type f \
+            \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \
+               -o -iname '*.webp' -o -iname '*.heic' -o -iname '*.heif' \) | wc -l)
+          echo "waiting=$waiting" >> "$GITHUB_OUTPUT"
+          echo "$waiting photo(s) waiting"
+
+      - name: Publish them into the gallery
+        if: steps.incoming.outputs.waiting != '0'
+        run: python3 tools/publish_submissions.py --incoming /tmp/incoming/submissions
+
+      - name: Verify the gallery is consistent
+        if: steps.incoming.outputs.waiting != '0'
+        run: python3 tools/gallery.py check
+
+      - name: Commit the published gallery
+        if: steps.incoming.outputs.waiting != '0'
+        run: |
+          set -euo pipefail
+          git config user.name "SUAS photo relay"
+          git config user.email "usydastronomy@gmail.com"
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "nothing changed"
+            exit 0
+          fi
+          added=$(git status --porcelain -- assets/img/events | wc -l)
+          git add assets/img/events assets/data/gallery.yml index.html
+          git commit -m "Publish $added submitted photo(s)"
+          git push origin HEAD:main
+
+      - name: Clear the processed photos from the submissions branch
+        if: steps.incoming.outputs.waiting != '0'
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin submissions
+          git checkout --quiet -B clear origin/submissions
+          find submissions -mindepth 2 -type f ! -name submission.json -delete
+          # -f because submissions/ is gitignored in the published tree.
+          git add -f -A submissions
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "nothing to clear"
+            exit 0
+          fi
+          git config user.name "SUAS photo relay"
+          git config user.email "usydastronomy@gmail.com"
+          git commit -m "Clear processed photo submissions"
+          git push origin HEAD:submissions
