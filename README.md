@@ -35,8 +35,8 @@ including the 19 event photos and the 11 committee portraits.
 
 ```
 index.html      Home          about.html    About
-events.html     Events        signup.html   Sign Up
-blog.html       Blog          home.html     legacy /home alias
+events.html     Events        blog.html     Blog
+home.html       legacy /home alias
 assets/css/     stylesheet    assets/js/    nav + lightbox
 assets/img/     rescued images
 reference/      provenance: original HTML, archive HTML, rescue scripts
@@ -79,8 +79,9 @@ Three deliberate departures:
 1. **Blog** — the original nav linked to `blog.usydastro.au`, a separate
    subdomain that is now dead and was never archived. The nav item is kept
    for fidelity but points at a local placeholder explaining the situation.
-2. **Sign Up** — the original embedded a Mailchimp form. That form is
-   gone, so the page carries the same information as static content.
+2. **Sign Up** — the original embedded a Mailchimp form on its own page.
+   That form is gone, so the sign-up information now lives on the home
+   page as static content, and the nav item points at the USU club page.
 3. **Google Sites chrome** — the "Google Sites / Report abuse" footer is
    replaced with society attribution.
 
@@ -94,11 +95,42 @@ site away from the 2025-03-16 capture rather than toward it:
   original's dark-on-light palette would otherwise be unreadable.
 - **About is unlinked** — `about.html` still exists and is served, but
   nothing in the navigation points at it any more.
-- **Navigation** — "Member Sign Up" was renamed to "Sign Up".
+- **Navigation** — "Member Sign Up" was renamed to "Sign Up", and that
+  nav item now links to the USU club page instead of a page on this site.
+- **Sign Up merged into Home** — the standalone `signup.html` was removed
+  and its content moved to the home page, between the events and gallery
+  sections.
 - **Footer** — the generic link icon Google Sites supplied was replaced
   with a real Discord mark; the email address moved out of the fine print
   into the icon row, whose heading became "Contact"; and the bottom line
   now carries a copyright and a credit.
+
+## The blog — recovery investigation (September 2026)
+
+`blog.usydastro.au` was probed across every public source available. Findings:
+
+- **Wayback Machine** — zero captures of the subdomain and no `/blog` path on the
+  main domain (full CDX domain query). The main site itself is captured from
+  2022-08-18 through 2025-03-16.
+- **Certificate Transparency (crt.sh)** — the blog really did exist: a series of
+  Let's Encrypt certificates covers **August 2022 to ~August 2023**, after which
+  nothing. So it was a separate hosted platform (Google Sites cannot host
+  subdomains), not a page of the main site.
+- **Common Crawl** (8 indexes, 2022–2025), **archive.today**, **urlscan.io**,
+  **Memento/TimeTravel**, **NLA Australian Web Archive**, and search engines
+  (Google, Bing, DuckDuckGo, Yandex) — no captures and no index of the hostname.
+  The blog was never crawled and never indexed.
+- **DNS** — the whole `usydastro.au` domain has lapsed (NXDOMAIN at the .au TLD,
+  not just the subdomain). Domain loss does not imply content loss on the
+  platform side, though: if the blog was a Blogger blog (the most common free
+  platform that maps custom subdomains), the posts still exist under the
+  owner's account at its native `*.blogspot.com` URL.
+
+**Remaining recovery avenues are human, not technical:** the 2022–2023
+committee (via the Facebook page, Instagram or usydastronomy@gmail.com) can
+name the blog platform and its login; a former editor's Google account would
+still hold the posts if it was Blogger; and blog posts were often cross-posted
+to the Facebook page, which survives.
 
 ## Third-party embeds
 

@@ -13,7 +13,7 @@ import sys
 REF = pathlib.Path(__file__).resolve().parent
 IFRAME_W = 1280
 SCALE = 0.45
-IFRAME_H = 3400
+IFRAME_H = 4800
 
 for page in sys.argv[1:] or ["index"]:
     bundle = (REF / f"preview-{page}.html").read_text()
