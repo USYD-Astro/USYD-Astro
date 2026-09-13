@@ -76,12 +76,27 @@ def build(page: str) -> pathlib.Path:
         r"url\('(assets/[^']+)'\)", lambda m: f"url('{data_uri(m.group(1))}')", src
     )
 
-    # 3. inline <img src> and <script src>
+    # 3. inline <img src> and <script src>. Also rewrite srcset candidates:
+    #    a data-uri src is ignored whenever a width-descriptor srcset is
+    #    present, so leaving relative candidates in would break every img
+    #    that has one (the hero slides do).
     src = re.sub(
         r'(<img[^>]*\ssrc=")(assets/[^"]+)(")',
         lambda m: m.group(1) + data_uri(m.group(2)) + m.group(3),
         src,
     )
+    def srcset_swap(m):
+        parts = []
+        for cand in m.group(1).split(", "):
+            url, _, desc = cand.partition(" ")
+            if url.startswith("assets/"):
+                uri = data_uri(url)
+                parts.append(f"{url} {desc}" if not uri else f"{uri} {desc}")
+            else:
+                parts.append(cand)
+        return 'srcset="' + ", ".join(parts) + '"'
+
+    src = re.sub(r'srcset="([^"]+)"', srcset_swap, src)
     def js_inline(m):
         return (
             "<script>\n"
