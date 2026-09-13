@@ -18,9 +18,12 @@
   --ink: #e8eaed;
   --muted: #9aa0a6;
   --rule: #2c2c2e;
-  --paper: #000000;
-  --surface: #121212;
-  --wash: #0a0a0a;
+  /* --paper is only the fallback painted behind the fixed backdrop layer.
+     --surface and --wash are translucent so that backdrop reads through
+     the panels and section bands sitting on top of it. */
+  --paper: #05070c;
+  --surface: rgba(18, 18, 18, 0.82);
+  --wash: rgba(255, 255, 255, 0.05);
   --font-head: "Roboto", "Helvetica Neue", Arial, sans-serif;
   --font-body: "Lato", "Helvetica Neue", Arial, sans-serif;
   --wrap: 1120px;
@@ -44,6 +47,21 @@ body {
   color: var(--ink);
   background: var(--paper);
   -webkit-font-smoothing: antialiased;
+}
+
+/* The light-painting photo — the one the original used as the gallery band —
+   now backs the whole site. It is pinned to the viewport with a fixed layer
+   rather than `background-attachment: fixed`, which iOS Safari ignores, so
+   the page content scrolls over a still image. The gradient scrim keeps body
+   copy readable wherever it lands. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(rgba(4, 8, 14, 0.8), rgba(4, 8, 14, 0.88)),
+    url("../img/events-banner.jpg") center / cover no-repeat;
 }
 
 img {
@@ -245,12 +263,11 @@ p {
   background: var(--wash);
 }
 
-/* The gallery section carried a photographic background in the original
-   (the light-painting shot); the gradient here keeps the photos legible. */
+/* The gallery band's own photo moved to the fixed page backdrop (see
+   body::before), so this is now a translucent tint that still separates the
+   gallery from the section above while letting the backdrop read through. */
 .section--banner {
-  background-color: #0d1b2a;
-  background-size: cover;
-  background-position: center;
+  background: rgba(13, 27, 42, 0.55);
   color: #fff;
 }
 
@@ -595,6 +612,11 @@ p {
 @media (max-width: 760px) {
   .nav-toggle {
     display: block;
+  }
+
+  /* Longer brand name needs to sit beside the hamburger on small screens. */
+  .brandmark span {
+    font-size: 1.05rem;
   }
 
   .nav {
