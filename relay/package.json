@@ -2,11 +2,14 @@
   "name": "suas-photo-relay",
   "version": "1.0.0",
   "private": true,
-  "description": "Upload relay for the SUAS photo gallery: verifies a captcha and commits submissions to the repository.",
+  "description": "Upload relay for the SUAS photo gallery: validates uploads and commits submissions to the repository.",
   "type": "module",
   "scripts": {
     "test": "node --test test/",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "3.112.0"
   }
 }
