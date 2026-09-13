@@ -77,7 +77,3 @@ photos:
   - file: 19.jpg
     alt: "Photo from a previous SUAS event"
     credit: ""
-  - file: "20.jpg"
-    alt: "Photo from a previous SUAS event"
-    credit: "SUAS smoke test"
-    date: "2026-09-13"
