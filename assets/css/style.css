@@ -580,14 +580,14 @@ p {
   line-height: 1.5;
 }
 
-/* Honeypot. Pushed off-screen rather than display:none, because a crude bot
-   will happily fill a field it can see but skip one that is not rendered. */
-.field--trap {
-  position: absolute;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
+/* Turnstile renders its own iframe in here. The relay verifies the token, so
+   this is a real captcha rather than a decorative one. */
+.turnstile {
+  margin: 4px 0 18px;
+}
+
+.turnstile:empty {
+  margin: 0;
 }
 
 .previews {

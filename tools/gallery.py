@@ -162,9 +162,14 @@ def cmd_sync(args) -> int:
     return 0
 
 
-def cmd_add(args) -> int:
-    existing = load()
-    used = {entry["file"] for entry in existing}
+def add_photos(files, *, alt: str, credit: str, date: str) -> list[dict]:
+    """Derive web-sized copies, append manifest entries and sync.
+
+    Shared by the `add` command and by tools/publish_submissions.py, which is
+    what the publishing Action runs -- so a queued submission and a photo
+    added by hand go through identical processing.
+    """
+    used = {entry["file"] for entry in load()}
     numbers = [
         int(p.stem) for p in PHOTOS.iterdir()
         if p.is_file() and p.stem.isdigit()
@@ -172,10 +177,10 @@ def cmd_add(args) -> int:
     nxt = max(numbers, default=0)
     added: list[dict] = []
 
-    for raw in args.files:
+    for raw in files:
         src = pathlib.Path(raw).expanduser()
         if not src.exists():
-            sys.exit(f"no such file: {src}")
+            raise SystemExit(f"no such file: {src}")
         nxt += 1
         name = f"{nxt:02d}.jpg"
         while name in used:
@@ -184,13 +189,7 @@ def cmd_add(args) -> int:
         used.add(name)
         dst = PHOTOS / name
         derive(src, dst, FULL_EDGE, FULL_QUALITY)
-        entry = {
-            "file": name,
-            "alt": args.alt,
-            "credit": args.credit,
-            "date": args.date,
-        }
-        added.append(entry)
+        added.append({"file": name, "alt": alt, "credit": credit, "date": date})
         before = src.stat().st_size
         after = dst.stat().st_size
         print(
@@ -199,10 +198,18 @@ def cmd_add(args) -> int:
         )
 
     append(added)
+    cmd_sync(argparse.Namespace(force=False))
+    return added
+
+
+def cmd_add(args) -> int:
+    added = add_photos(
+        args.files, alt=args.alt, credit=args.credit, date=args.date
+    )
     if args.email:
         remember_contact(args.name or args.credit, args.email, [e["file"] for e in added])
         print(f"  contact recorded in {CONTACTS.relative_to(ROOT)} (not committed)")
-    return cmd_sync(argparse.Namespace(force=False))
+    return 0
 
 
 def cmd_check(args) -> int:

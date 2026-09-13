@@ -13,6 +13,10 @@ reference/originals/
 # would be public. Keep addresses out of the repo entirely.
 submissions/
 
+# Wrangler's local build output, if the relay is developed in place.
+relay/node_modules/
+relay/.wrangler/
+
 # OS / editor noise
 .DS_Store
 Thumbs.db
