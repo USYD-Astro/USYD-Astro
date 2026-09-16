@@ -738,18 +738,6 @@ p {
   display: block;
 }
 
-.notice {
-  background: var(--wash);
-  border-left: 4px solid var(--brand);
-  padding: 16px 20px;
-  margin: 22px 0 0;
-  font-size: 0.95rem;
-}
-
-.notice p:last-child {
-  margin-bottom: 0;
-}
-
 /* ---------- photo submission form ---------------------------------------- */
 
 .submit-form {
