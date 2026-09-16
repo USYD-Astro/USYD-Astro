@@ -15,11 +15,26 @@ name: Publish photo submissions
 # count. Photos arrive exactly as the submitter chose them, EXIF and all -- the
 # re-encode that tools/gallery.py does below is what leaves that behind in the
 # copies the site actually serves. To review submissions before they go live
-# instead, change the trigger below to workflow_dispatch only.
+# instead, delete the schedule below and keep workflow_dispatch.
+#
+# This runs from main, on a timer, and deliberately NOT on the push to
+# `submissions` that starts the work. For a push event GitHub runs the copy of
+# this file that lives on the pushed branch, and the queue branch is a fork of
+# main that the relay only ever adds photos to -- so a push trigger runs
+# whatever version of this workflow was current when the branch was created.
+# That is exactly how a submitted photo came to be pushed without its manifest
+# entry: the copy on the branch staged the image but not assets/data/
+# submissions.yml or submit.html, so the photo went live unlisted and every
+# later consistency check failed on it. For the same reason the queue branch
+# carries no copy of this file at all now.
 
 on:
-  push:
-    branches: [submissions]
+  schedule:
+    # The queue is a branch rather than an event, so a short poll is what
+    # drains it. Five minutes is GitHub's floor, and runs can start late
+    # under load, which is what the submit page's "within a few minutes"
+    # promises.
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -53,9 +68,18 @@ jobs:
           git fetch --quiet origin submissions
           mkdir -p /tmp/incoming
           git archive origin/submissions submissions | tar -x -C /tmp/incoming
-          waiting=$(find /tmp/incoming/submissions -mindepth 2 -type f \
-            \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \
-               -o -iname '*.webp' -o -iname '*.heic' -o -iname '*.heif' \) | wc -l)
+          images() {
+            find submissions -mindepth 2 -type f \
+              \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \
+                 -o -iname '*.webp' -o -iname '*.heic' -o -iname '*.heif' \)
+          }
+          cd /tmp/incoming
+          # The exact paths this run is about to publish. The clear step below
+          # deletes these and nothing else, so an upload that arrives while the
+          # job is running stays queued for the next run instead of being
+          # thrown away unpublished.
+          images > /tmp/processed.txt
+          waiting=$(wc -l < /tmp/processed.txt)
           echo "waiting=$waiting" >> "$GITHUB_OUTPUT"
           echo "$waiting photo(s) waiting"
 
@@ -88,16 +112,34 @@ jobs:
         if: steps.incoming.outputs.waiting != '0'
         run: |
           set -euo pipefail
-          git fetch --quiet origin submissions
-          git checkout --quiet -B clear origin/submissions
-          find submissions -mindepth 2 -type f ! -name submission.json -delete
-          # -f because submissions/ is gitignored in the published tree.
-          git add -f -A submissions
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "nothing to clear"
-            exit 0
-          fi
           git config user.name "SUAS photo relay"
           git config user.email "usydastronomy@gmail.com"
-          git commit -m "Clear processed photo submissions"
-          git push origin HEAD:submissions
+          # The relay commits photos and their details to the queue as they
+          # arrive, so a push here can lose a race with it. Losing that race is
+          # what left a published photo queued for a second publish, and the
+          # duplicate that would have followed it, so this re-reads the branch
+          # and tries again rather than giving up.
+          for attempt in 1 2 3 4 5; do
+            git fetch --quiet origin submissions
+            git checkout --quiet -B clear origin/submissions
+            while read -r path; do
+              rm -f -- "$path"
+              # --cached so a queue that emptied completely still records the
+              # deletion, and -f because submissions/ is gitignored in the
+              # published tree.
+              git rm -q -f --cached --ignore-unmatch -- "$path"
+            done < /tmp/processed.txt
+            if [ -z "$(git status --porcelain)" ]; then
+              echo "nothing to clear"
+              exit 0
+            fi
+            git commit --quiet -m "Clear processed photo submissions"
+            if git push --quiet origin HEAD:submissions; then
+              echo "cleared the published photos on attempt $attempt"
+              exit 0
+            fi
+            echo "another commit landed on the queue; re-reading it"
+            sleep 3
+          done
+          echo "could not clear the queue after 5 attempts" >&2
+          exit 1
