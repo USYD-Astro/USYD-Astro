@@ -322,10 +322,9 @@ p {
 }
 
 /* The gallery band's own photo moved to the fixed page backdrop (see
-   body::before), so this is now a translucent tint that still separates the
-   gallery from the section above while letting the backdrop read through. */
+   body::before); the band carries no tint of its own and sits directly on
+   the darkened backdrop, with white text for contrast. */
 .section--banner {
-  background: rgba(13, 27, 42, 0.55);
   color: #fff;
 }
 
