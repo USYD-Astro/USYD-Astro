@@ -7,10 +7,15 @@ name: Publish photo submissions
 # processed twice. `submission.json` deliberately stays behind: it holds the
 # submitter's name and email, which must never reach the published site.
 #
+# Published submissions go to assets/data/submissions.yml and the rail on
+# submit.html, NOT to the home page gallery, which stays a curated selection
+# of photos. That also means submitted photos get no hero slide.
+#
 # Submissions publish automatically: the relay enforces consent, size, type and
-# count, and the browser strips metadata before anything is sent. To review
-# submissions before they go live instead, change the trigger below to
-# workflow_dispatch only.
+# count. Photos arrive exactly as the submitter chose them, EXIF and all -- the
+# re-encode that tools/gallery.py does below is what leaves that behind in the
+# copies the site actually serves. To review submissions before they go live
+# instead, change the trigger below to workflow_dispatch only.
 
 on:
   push:
@@ -72,8 +77,10 @@ jobs:
             echo "nothing changed"
             exit 0
           fi
-          added=$(git status --porcelain -- assets/img/events | wc -l)
-          git add assets/img/events assets/data/gallery.yml index.html
+          # One photo is two paths (the original and its thumbnail), so count
+          # the originals rather than every changed path.
+          added=$(git status --porcelain -- assets/img/events | grep -v '/thumbs/' | wc -l)
+          git add assets/img/events assets/data/gallery.yml assets/data/submissions.yml submit.html index.html
           git commit -m "Publish $added submitted photo(s)"
           git push origin HEAD:main
 

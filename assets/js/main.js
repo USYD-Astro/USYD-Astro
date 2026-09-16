@@ -1,5 +1,6 @@
-/* Small progressive-enhancement script: mobile nav toggle and the
-   event-gallery lightbox. Without JS the site is still fully readable. */
+/* Small progressive-enhancement script: mobile nav toggle, the photo
+   lightbox and the submitted-photo rail. Without JS the site is still fully
+   readable, and the rail is still scrollable and swipeable. */
 (function () {
   "use strict";
 
@@ -64,9 +65,15 @@
     });
   }
 
-  /* ---- event gallery lightbox ------------------------------------------- */
-  var gallery = document.querySelector(".gallery");
-  if (!gallery) {
+  /* ---- photo lightbox ---------------------------------------------------- */
+  /* One lightbox serves both galleries: the grid on the home page and the
+     rail on the submit page. Thumbnails are selected by their gallery rather
+     than by a data attribute, because the rail's photographs carry the
+     submission's details and those have to travel with the image. */
+  var thumbs = Array.prototype.slice.call(
+    document.querySelectorAll(".gallery img, .rail img")
+  );
+  if (!thumbs.length) {
     return;
   }
 
@@ -74,24 +81,65 @@
   lightbox.className = "lightbox";
   lightbox.setAttribute("role", "dialog");
   lightbox.setAttribute("aria-modal", "true");
-  lightbox.setAttribute("aria-label", "Event photo");
+  lightbox.setAttribute("aria-label", "Photo");
   lightbox.innerHTML =
     '<div class="lightbox__bar">' +
     '<button type="button" data-act="prev" aria-label="Previous photo">&#8249;</button>' +
     '<button type="button" data-act="next" aria-label="Next photo">&#8250;</button>' +
     '<button type="button" data-act="close" aria-label="Close">&#10005;</button>' +
     "</div>" +
-    '<img alt="">';
+    '<img alt="">' +
+    '<div class="lightbox__meta"></div>';
   document.body.appendChild(lightbox);
 
   var pic = lightbox.querySelector("img");
-  var thumbs = Array.prototype.slice.call(gallery.querySelectorAll("img"));
+  var meta = lightbox.querySelector(".lightbox__meta");
   var index = 0;
+
+  /* Whatever a submitter wrote is inserted as text, never as markup: a
+     caption is somebody else's sentence on a page anyone can reach. */
+  function detail(text, className) {
+    var line = document.createElement("p");
+    line.className = className;
+    line.textContent = text;
+    return line;
+  }
+
+  function readableDate(value) {
+    var parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || "");
+    if (!parts) {
+      return value || "";
+    }
+    /* Built from the parts rather than parsed: "2026-09-16" parses as UTC
+       midnight, which is the previous day west of Greenwich. */
+    var when = new Date(+parts[1], +parts[2] - 1, +parts[3]);
+    return when.toLocaleDateString("en-AU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+  }
 
   function show(i) {
     index = (i + thumbs.length) % thumbs.length;
-    pic.src = thumbs[index].dataset.full || thumbs[index].src;
-    pic.alt = thumbs[index].alt || "";
+    var thumb = thumbs[index];
+    var data = thumb.dataset;
+
+    pic.src = data.full || thumb.src;
+    pic.alt = thumb.alt || "";
+
+    meta.innerHTML = "";
+    if (data.credit) {
+      meta.appendChild(detail(data.credit, "lightbox__credit"));
+    }
+    if (data.caption) {
+      meta.appendChild(detail(data.caption, "lightbox__caption"));
+    }
+    if (data.date) {
+      meta.appendChild(detail("Sent in " + readableDate(data.date), "lightbox__date"));
+    }
+    lightbox.classList.toggle("has-meta", meta.childNodes.length > 0);
+
     lightbox.classList.add("is-open");
     document.body.style.overflow = "hidden";
   }
@@ -131,4 +179,51 @@
       show(index - 1);
     }
   });
+})();
+
+/* ---- submitted photo rail ------------------------------------------------- */
+/* The rail on the submit page shows four photos at a time and pages sideways.
+   It is an ordinary horizontally scrolling element, so a touch screen swipes
+   it and the arrow keys scroll it when it has focus; the arrows here add a
+   way to page it with a mouse, and hide themselves when there is nothing to
+   page. */
+(function () {
+  "use strict";
+
+  var rail = document.getElementById("rail");
+  var nav = document.getElementById("rail-nav");
+  var prev = document.getElementById("rail-prev");
+  var next = document.getElementById("rail-next");
+
+  if (!rail || !nav || !prev || !next) {
+    return;
+  }
+
+  /* One page is exactly one rail width, which is four photos plus the gaps
+     between them, and scroll snapping tidies up whatever is left over. */
+  function page(direction) {
+    rail.scrollBy({ left: direction * rail.clientWidth, behavior: "smooth" });
+  }
+
+  function sync() {
+    var overflowing = rail.scrollWidth > rail.clientWidth + 1;
+    nav.hidden = !overflowing;
+    if (!overflowing) {
+      return;
+    }
+    /* A pixel of slack, because sub-pixel scroll positions never land
+       exactly on the ends. */
+    prev.disabled = rail.scrollLeft <= 1;
+    next.disabled = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 1;
+  }
+
+  prev.addEventListener("click", function () {
+    page(-1);
+  });
+  next.addEventListener("click", function () {
+    page(1);
+  });
+  rail.addEventListener("scroll", sync);
+  window.addEventListener("resize", sync);
+  sync();
 })();

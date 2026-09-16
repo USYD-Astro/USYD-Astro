@@ -8,9 +8,10 @@ that the browser talks to, and the browser never sees it.
 
 What it does, in order: checks the origin, refuses oversized or non-image
 uploads, and commits what is left to a `submissions` branch. It deliberately
-does **not** touch image bytes — the browser has already re-encoded each photo,
-and the publishing Action re-encodes again, so metadata is stripped at both
-ends.
+does **not** touch image bytes — the page sends the file the visitor chose,
+and the publishing Action re-encodes it when it derives the web-sized copy.
+That re-encode is what leaves EXIF and GPS behind, so the copies the site
+serves carry none, but the originals sitting on the `submissions` branch do.
 
 ```
 browser  --POST multipart-->  relay (Cloudflare Worker)
@@ -21,8 +22,14 @@ browser  --POST multipart-->  relay (Cloudflare Worker)
                                                  |
                                     .github/workflows/publish-submission.yml
                                                  v
-                                     assets/img/events + gallery.yml + index.html
+                          assets/img/events + submissions.yml + submit.html
 ```
+
+Published photos land in the gallery on `submit.html`, alongside the credit,
+caption and date the submitter gave. The home page gallery stays curated, so a
+submission never appears there; moving one across is a matter of moving its
+entry from `assets/data/submissions.yml` to `assets/data/gallery.yml` and
+running `tools/gallery.py sync`.
 
 **There is no captcha, on purpose.** The submitter's name, email and consent
 checkbox — plus strict origin, size, type and count limits — are the barriers;
@@ -94,8 +101,11 @@ To try it end to end without burning a real submission, run `wrangler dev`,
 point `data-relay` at the local URL, and upload something small. Check that:
 
 - the photo appears on the `submissions` branch, not on `main`
-- running the publishing workflow turns it into a gallery entry
-- `submission.json` stays on the submissions branch and never reaches `main`
+- running the publishing workflow turns it into an entry in the gallery on
+  `submit.html`, with the name and other details you typed shown in the
+  expanded view, and nothing added to the home page gallery
+- `submission.json` stays on the submissions branch and never reaches `main`,
+  so the email address never does either
 
 ## Changing the origin
 

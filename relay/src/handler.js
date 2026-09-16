@@ -12,9 +12,12 @@
  * src/worker.js is the thin adapter that hands it those things.
  *
  * What it does NOT do: touch image bytes. Workers have no image pipeline on
- * the free plan, so the browser re-encodes the photo (which strips EXIF) and
- * the publishing Action strips it again. The relay's job is to refuse junk
- * and commit. There is deliberately no captcha: nothing uploads until the
+ * the free plan, so the page sends the photo as it was chosen and the
+ * publishing Action re-encodes it when it derives the web-sized copy. The
+ * relay's job is to refuse junk and commit. Nothing here strips EXIF: the
+ * files committed to the submissions branch still carry it, and only the
+ * re-encoded copies that reach the published branch do not. There is
+ * deliberately no captcha: nothing uploads until the
  * submitter ticks the consent box and gives a reply address, and the cheapest
  * real deterrents are already here -- origin checking, strict size and type
  * limits, and a hard 8-photo cap. If spam ever becomes a problem, a Turnstile

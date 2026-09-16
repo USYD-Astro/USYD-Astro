@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish queued photo submissions into the gallery.
+"""Publish queued photo submissions into the submit page's gallery.
 
 The upload relay commits each submission to a `submissions` branch, which
 GitHub Pages does not serve. This turns whatever is waiting there into real
@@ -8,9 +8,15 @@ hand-added photo gets (tools/gallery.py), then reports what is left.
 
     python3 tools/publish_submissions.py --incoming /tmp/incoming/submissions
 
+Entries go into assets/data/submissions.yml, which feeds the rail on
+submit.html -- NOT the home page gallery, which stays curated.
+
 Only images are picked up; `submission.json` stays behind on the submissions
 branch as the record of who sent what, so contact details never reach the
-published site.
+published site. What does travel onward is the credit, the caption and the
+receipt date, which is what the expanded view on submit.html shows. The
+submitter's *name* is used only as a fallback credit when they left the credit
+field empty, and their email address is never copied anywhere published.
 """
 
 from __future__ import annotations
@@ -52,7 +58,7 @@ def pending(incoming: pathlib.Path) -> list[pathlib.Path]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--incoming", default="/tmp/incoming/submissions")
-    parser.add_argument("--alt", default="Photo from a previous SUAS event")
+    parser.add_argument("--alt", default="Photo sent in by a SUAS member")
     args = parser.parse_args()
 
     folders = pending(pathlib.Path(args.incoming))
@@ -64,17 +70,20 @@ def main() -> int:
     for folder in folders:
         meta = read_meta(folder)
         credit = str(meta.get("credit") or meta.get("name") or "").strip()
+        caption = str(meta.get("caption") or "").strip()
         date = str(meta.get("received") or "")[:10]
         print(f"  submission {folder.name}: {len(images_in(folder))} photo(s), credit {credit!r}")
         gallery.add_photos(
             [str(p) for p in images_in(folder)],
             alt=args.alt,
             credit=credit,
+            caption=caption,
             date=date,
+            collection="submissions",
         )
         published += 1
 
-    print(f"\n  published {published} submission(s) into the gallery")
+    print(f"\n  published {published} submission(s) into the submit page gallery")
     return 0
 
 

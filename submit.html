@@ -43,76 +43,56 @@
 
   <section class="section">
     <div class="wrap">
-      <h2>Send us your photos</h2>
-      <p class="lede">Got a good shot from one of our stargazing trips or on-campus events? Send it in and we&rsquo;ll add it to the gallery on the home page. There is nothing to sign up for and nothing to install.</p>
+      <h2>Send us your photos!</h2>
+      <p class="lede">Got a good shot from one of our stargazing trips or on-campus events? Send it in and it joins the gallery below, which is where members&rsquo; photos live. There is nothing to sign up for and nothing to install.</p>
 
       <div class="notice">
         <p><strong>Please check first.</strong> Only send photos you took yourself, or that you have permission to share. If somebody in a photo would rather it were not published, please leave that one out. We credit photos to whoever sends them, unless you ask us not to.</p>
       </div>
+
+      <!-- The upload form is opened as a dialog by submit.js. It is not
+           rendered flat on the page because the page is mostly an invitation
+           and a gallery; the form is a detour you take deliberately. The
+           dialog needs JavaScript, and so does the form itself -- it posts to
+           the relay from this page -- so nothing usable is hidden from anyone
+           by putting it behind a click. -->
+      <p class="cta">
+        <button type="button" class="button button--lg" id="open-upload" aria-haspopup="dialog" aria-controls="upload-modal">Upload your photos</button>
+        <span class="cta__note">Photos are credited, never sold, and can be taken down again on request.</span>
+      </p>
+
+      <noscript>
+        <p class="hint">Uploading needs JavaScript, because the photos go straight from this page to our upload service. Email us instead and we will add them for you: <a href="mailto:usydastronomy@gmail.com">usydastronomy@gmail.com</a></p>
+      </noscript>
     </div>
   </section>
 
-  <section class="section section--wash">
+  <section class="section" id="sent-in">
     <div class="wrap">
-      <h2>Choose your photos</h2>
-      <p class="lede">Pick your photos below. Your browser shrinks each one and strips its metadata &mdash; including any location data &mdash; before anything is sent. Nothing leaves your device until you press the button at the end.</p>
-
-      <!-- Upload endpoint. The Worker URL is public by design; the GitHub
-           token stays on the relay, which is the whole point of the relay.
-           Deploy it (see relay/README.md), then fill this in. While data-relay
-           is empty the form says so plainly instead of failing on submit. -->
-      <form class="submit-form" id="photo-form" novalidate
-            data-relay="https://suas-photo-relay.usydclubs.workers.dev/upload">
-
-        <div class="field">
-          <label for="photos">Photos</label>
-          <input type="file" id="photos" name="photos" accept="image/*" multiple>
-          <p class="hint">JPEG, PNG or HEIC, up to 8 at a time. Large photos are fine &mdash; they are shrunk before they are sent.</p>
+      <div class="rail-head">
+        <h2>Sent in by members</h2>
+        <!-- The arrows are revealed by main.js only when the rail actually
+             overflows; without JavaScript the rail is still swipeable and
+             scrollable, so nothing is lost. -->
+        <div class="rail__nav" id="rail-nav" hidden>
+          <button type="button" id="rail-prev" aria-controls="rail" aria-label="Previous photos">&#8249;</button>
+          <button type="button" id="rail-next" aria-controls="rail" aria-label="More photos">&#8250;</button>
         </div>
+      </div>
+      <p class="lede">Every photo here was sent in by a member. Select one to see it full size, along with who sent it and anything they told us about it.</p>
 
-        <ul class="previews" id="previews" aria-live="polite"></ul>
-
-        <div class="fields">
-          <div class="field">
-            <label for="name">Your name</label>
-            <input type="text" id="name" name="name" autocomplete="name" required>
-          </div>
-          <div class="field">
-            <label for="email">Your email</label>
-            <input type="email" id="email" name="email" autocomplete="email" required>
-            <p class="hint">So we can reply to you. We won&rsquo;t publish it.</p>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="credit">How should we credit you?</label>
-          <input type="text" id="credit" name="credit" placeholder="e.g. Jane C. &mdash; or write &ldquo;anonymous&rdquo;">
-        </div>
-
-        <div class="field">
-          <label for="caption">Anything we should know?</label>
-          <textarea id="caption" name="caption" rows="3" placeholder="Which event it was, roughly when, who is in them&hellip;"></textarea>
-        </div>
-
-        <div class="field field--check">
-          <input type="checkbox" id="consent" name="consent" required>
-          <label for="consent">I took these photos or have permission to share them, and anyone pictured is happy for them to appear on this site.</label>
-          <p class="hint">Photos go straight into the public gallery once they pass this form &mdash; that is exactly what the checkbox promises. Choose with care.</p>
-        </div>
-
-        <p class="form-status" id="status" role="status"></p>
-
-        <div class="form-actions">
-          <button type="submit" class="button" id="send">Send my photos</button>
-        </div>
-      </form>
+      <div class="rail" id="rail" tabindex="0" role="region" aria-label="Photos sent in by members">
+        <!-- submissions:start -- generated by tools/gallery.py; do not edit by hand -->
+        <p class="rail__empty">Nothing has been sent in yet &mdash; yours could be the first. Use the button above to add your photos to this gallery.</p>
+        <!-- submissions:end -->
+      </div>
     </div>
   </section>
 
   <section class="section">
     <div class="wrap">
       <h2>What happens next</h2>
-      <p class="lede">Your photos are added to the gallery, usually within a couple of minutes. Please send only photos you are happy to see published, and only ones you took yourself or have permission to share.</p>
+      <p class="lede">Your photos are added to the gallery on this page, usually within a couple of minutes, with your name and any details you gave us. The home page gallery is a curated selection, so photos sent in here do not appear there.</p>
       <p class="lede">If you change your mind, or want a photo taken down later, email <a href="mailto:usydastronomy@gmail.com?subject=Photo%20in%20the%20SUAS%20gallery">usydastronomy@gmail.com</a> and it will be removed.</p>
     </div>
   </section>
@@ -140,6 +120,73 @@
   </div>
   <p class="site-foot__legal">&copy; 2026 Sydney University Astronomy Society | Website by Murray Jones</p>
 </footer>
+
+<!-- Native <dialog>, so Escape, focus trapping and the backdrop come from the
+     browser rather than from script. -->
+<dialog class="modal" id="upload-modal" aria-labelledby="upload-modal-title">
+  <div class="modal__panel">
+    <div class="modal__head">
+      <h2 id="upload-modal-title">Send us your photos!</h2>
+      <button type="button" class="modal__close" id="close-upload" aria-label="Close">&#10005;</button>
+    </div>
+
+    <!-- Upload endpoint. The Worker URL is public by design; the GitHub
+         token stays on the relay, which is the whole point of the relay.
+         Deploy it (see relay/README.md), then fill this in. While data-relay
+         is empty the form says so plainly instead of failing on submit. -->
+    <form class="submit-form modal__body" id="photo-form" novalidate
+          data-relay="https://suas-photo-relay.usydclubs.workers.dev/upload">
+
+      <!-- The drop target is a label for the file input, so a click opens the
+           picker without any JavaScript. The input sits inside it, off-screen
+           but still focusable and still named: that is what keeps the keyboard
+           and screen-reader paths working, and what lets the label light up
+           when the input has focus. submit.js adds the dragging half of the
+           gesture. -->
+      <label class="dropzone" id="dropzone" for="photos">
+        <svg class="dropzone__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 15.2a3.2 3.2 0 0 1-3.2-3.2A3.2 3.2 0 0 1 12 8.8a3.2 3.2 0 0 1 3.2 3.2 3.2 3.2 0 0 1-3.2 3.2M9 2 7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9m3 5c2.76 0 5 2.24 5 5s-2.24 5-5 5-5-2.24-5-5 2.24-5 5-5z"/></svg>
+        <span class="dropzone__text">Drag photos here, or click to choose</span>
+        <input class="sr-only" type="file" id="photos" name="photos" accept="image/jpeg,image/png,image/webp" multiple aria-label="Photos">
+      </label>
+
+      <ul class="previews" id="previews" aria-live="polite"></ul>
+
+      <div class="fields">
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" id="name" name="name" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" autocomplete="email" required>
+        </div>
+      </div>
+
+      <!-- Labelled "Other Details" because that is what it is to the person
+           filling the form in. It is published as the photo's caption, which
+           is the name the manifest, the relay and the lightbox all use. -->
+      <div class="field">
+        <label for="caption">Other Details</label>
+        <textarea id="caption" name="caption" rows="3" placeholder="Photo details, camera specs, etc."></textarea>
+      </div>
+
+      <div class="field field--check">
+        <input type="checkbox" id="consent" name="consent" required>
+        <label for="consent">I took these photos or have permission to share them, and anyone pictured is happy for them to appear on this site.</label>
+      </div>
+    </form>
+
+    <div class="modal__foot">
+      <p class="form-status" id="status" role="status"></p>
+
+      <div class="form-actions">
+        <!-- Sits outside the form so it can live in the footer that does not
+             scroll; the form attribute is what still submits the form. -->
+        <button type="submit" form="photo-form" class="button button--lg" id="send">Send my photos</button>
+      </div>
+    </div>
+  </div>
+</dialog>
 
 <script src="assets/js/main.js"></script>
 <script src="assets/js/submit.js"></script>
