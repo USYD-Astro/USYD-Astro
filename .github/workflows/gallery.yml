@@ -5,6 +5,12 @@ name: Gallery check
 # gallery:end markers in index.html -- can drift apart. This catches that:
 # most often a photo dropped into assets/img/events/ by hand with no manifest
 # entry, or a stale thumbnail after replacing a photo.
+#
+# The submit page has the same three pieces (assets/data/submissions.yml,
+# its thumbnails and the rail between the submissions markers), so both are
+# listed below. Leaving the submissions pair out meant a published photo
+# could sit in assets/img/events/ with no manifest entry without this
+# workflow ever running -- it only surfaced on the next unrelated push.
 
 on:
   push:
@@ -12,14 +18,18 @@ on:
     paths:
       - "assets/img/events/**"
       - "assets/data/gallery.yml"
+      - "assets/data/submissions.yml"
       - "index.html"
+      - "submit.html"
       - "tools/gallery.py"
       - ".github/workflows/gallery.yml"
   pull_request:
     paths:
       - "assets/img/events/**"
       - "assets/data/gallery.yml"
+      - "assets/data/submissions.yml"
       - "index.html"
+      - "submit.html"
       - "tools/gallery.py"
   workflow_dispatch:
 

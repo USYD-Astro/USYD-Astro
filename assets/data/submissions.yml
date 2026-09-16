@@ -32,3 +32,8 @@
 # Starts empty, and deliberately without a `[]`: entries are appended in block
 # form, which needs the key to have no value written next to it.
 photos:
+  - file: "21.jpg"
+    alt: "Photo sent in by a SUAS member"
+    credit: "Murray"
+    caption: "Test Photo"
+    date: "2026-09-16"
