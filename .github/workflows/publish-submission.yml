@@ -65,10 +65,29 @@ jobs:
         id: incoming
         run: |
           set -euo pipefail
+          # The relay creates the queue branch lazily, on the first upload, so a
+          # site with nothing submitted yet has no such branch -- and neither
+          # does one where the branch was deleted to start clean. Running to
+          # find an empty queue is the right answer; a red run every five
+          # minutes until somebody uploads is not.
+          if ! git ls-remote --exit-code --heads origin submissions >/dev/null 2>&1; then
+            echo "waiting=0" >> "$GITHUB_OUTPUT"
+            echo "no queue branch yet"
+            exit 0
+          fi
           git fetch --quiet origin submissions
           mkdir -p /tmp/incoming
-          git archive origin/submissions submissions | tar -x -C /tmp/incoming
+          # The queue legitimately holds nothing most of the time, and a
+          # freshly created queue branch has no submissions directory at all:
+          # submissions/ is gitignored in the published tree, so a branch cut
+          # from main starts without it. An empty queue has to be a clean
+          # no-op, because both a bare `git archive` and a `find` over a
+          # missing path exit non-zero and set -e would fail the run.
+          if git cat-file -e origin/submissions:submissions 2>/dev/null; then
+            git archive origin/submissions submissions | tar -x -C /tmp/incoming
+          fi
           images() {
+            [ -d submissions ] || return 0
             find submissions -mindepth 2 -type f \
               \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \
                  -o -iname '*.webp' -o -iname '*.heic' -o -iname '*.heif' \)
