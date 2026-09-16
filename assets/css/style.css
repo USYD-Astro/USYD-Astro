@@ -355,9 +355,10 @@ p {
 
 .cards {
   display: grid;
-  /* Cards, not a fluid grid: they come in threes, so the columns are one or
-     three and never two, which is what auto-fit kept producing in the middle
-     of the range -- two cards on one row and the third stranded below. */
+  /* Cards, not a fluid grid: the three-card sections hold three across rather
+     than letting auto-fit strand the third card below two, which is what it
+     kept producing in the middle of the range. Two-card sections get their own
+     count in the media query below. */
   grid-template-columns: 1fr;
   gap: 28px;
   margin-top: 28px;
@@ -373,6 +374,20 @@ p {
        membership card is long enough to push the page sideways at this end of
        the range. Zero lets the track shrink and the word wrap instead. */
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* Not every section carries three cards -- the stargazing trips section has
+     two. Forcing those into three tracks left the third one empty and
+     squeezed the pair into two thirds of the row, so the column count follows
+     the markup instead: two cards share the row evenly, and a lone card takes
+     the whole of it. Sections that really do come in threes are unaffected.
+     Rules come after the one above, which they also outweigh on specificity. */
+  .cards:has(> :nth-child(2):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cards:has(> :only-child) {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
