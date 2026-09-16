@@ -1,0 +1,34 @@
+# Photos sent in through the upload form.
+#
+# This is the submit page's own gallery, deliberately separate from
+# assets/data/gallery.yml so that the home page stays curated: a photo only
+# reaches the home page if someone moves its entry there by hand.
+#
+# tools/publish_submissions.py appends to this file when the relay's queued
+# uploads are published, and tools/gallery.py generates the sideways rail
+# between the submissions:start / submissions:end markers in submit.html from
+# it. Do not edit that markup by hand -- run the tool:
+#
+#   python3 tools/gallery.py sync     # rebuild thumbs + markup from this file
+#   python3 tools/gallery.py add FILE --collection submissions
+#   python3 tools/gallery.py check    # verify both files, thumbs and markup agree
+#
+# Fields:
+#   file     (required) filename inside assets/img/events/
+#   alt      (required) alternative text, for screen readers
+#   credit   (optional) how the photographer wants to be credited, shown in
+#                       the expanded view
+#   caption  (optional) what the submitter told us about the photo, shown in
+#                       the expanded view
+#   date     (optional) YYYY-MM-DD the photo was received
+#
+# A photo listed here gets a thumbnail and a web-sized original but no hero
+# slide, because it never appears in the home page slideshow.
+#
+# Note that submitter email addresses are deliberately NOT stored here: this
+# file is published with the site. Contact details stay on the submissions
+# branch and in submissions/contacts.yml, neither of which is served.
+
+# Starts empty, and deliberately without a `[]`: entries are appended in block
+# form, which needs the key to have no value written next to it.
+photos:

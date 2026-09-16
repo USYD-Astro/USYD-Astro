@@ -309,6 +309,11 @@ p {
   .hero__slide {
     transition: none;
   }
+
+  /* Paging the rail is still instant, just not animated. */
+  .rail {
+    scroll-behavior: auto;
+  }
 }
 
 /* ---------- generic sections -------------------------------------------- */
@@ -414,6 +419,106 @@ p {
   transform: scale(1.06);
 }
 
+/* ---------- submitted photo rail ----------------------------------------- */
+
+/* The submit page's own gallery. Four photos across at a time, paged
+   sideways: the rail is the scroll container, so a phone can swipe it and the
+   arrows simply scroll it a page at a time. */
+.rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.rail-head h2 {
+  margin-bottom: 0;
+}
+
+.rail {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding-bottom: 8px;
+}
+
+.rail:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 4px;
+}
+
+/* Exactly four across, gaps included; two below the narrow breakpoint so the
+   photos do not shrink to stamps on a phone. */
+.rail > * {
+  flex: 0 0 calc((100% - 36px) / 4);
+  scroll-snap-align: start;
+}
+
+.rail__item {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+
+.rail__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.rail__item:hover img,
+.rail__item:focus img {
+  transform: scale(1.06);
+}
+
+/* Replaces the rail entirely until the first submission is published. */
+.rail__empty {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--muted);
+}
+
+.rail__nav {
+  display: flex;
+  gap: 8px;
+}
+
+/* The arrows are hidden in the markup so that a no-JS visitor never sees
+   buttons that cannot work; main.js reveals them when the rail overflows. */
+.rail__nav[hidden] {
+  display: none;
+}
+
+.rail__nav button {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 5px 15px;
+  cursor: pointer;
+}
+
+.rail__nav button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--link);
+}
+
+.rail__nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* ---------- lightbox ----------------------------------------------------- */
 
 .lightbox {
@@ -421,6 +526,10 @@ p {
   inset: 0;
   background: rgba(0, 0, 0, 0.9);
   display: none;
+  /* Column so a photo and the details that came with it stack rather than
+     sitting on top of each other. */
+  flex-direction: column;
+  gap: 14px;
   align-items: center;
   justify-content: center;
   z-index: 50;
@@ -436,6 +545,45 @@ p {
   max-width: 92vw;
   max-height: 82vh;
   object-fit: contain;
+}
+
+/* Details the submitter gave us. Only the submit page's rail carries them,
+   so on the home page this stays empty and takes no space. */
+.lightbox.has-meta img {
+  max-height: 66vh;
+}
+
+.lightbox__meta {
+  max-width: min(720px, 92vw);
+  text-align: center;
+}
+
+.lightbox__meta:empty {
+  display: none;
+}
+
+.lightbox__meta p {
+  margin: 0;
+}
+
+.lightbox__meta p + p {
+  margin-top: 3px;
+}
+
+.lightbox__credit {
+  font-family: var(--font-head);
+  font-size: 1.05rem;
+  color: #fff;
+}
+
+.lightbox__caption {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.lightbox__date {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .lightbox__bar {
@@ -594,10 +742,75 @@ p {
   padding: 11px 13px;
 }
 
-.field input[type="file"] {
-  width: 100%;
-  font: inherit;
+/* ---------- photo drop target -------------------------------------------- */
+
+/* Clicking a label that points at the file input opens the picker with no
+   JavaScript at all, so this is only a styled file button until submit.js
+   adds dragging on top of it. */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 168px;
+  margin-bottom: 20px;
+  padding: 24px;
+  border: 2px dashed var(--rule);
+  border-radius: 8px;
+  background: rgba(10, 10, 10, 0.45);
   color: var(--muted);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.dropzone:hover,
+.dropzone.is-over {
+  border-color: var(--link);
+  color: var(--ink);
+}
+
+.dropzone.is-over {
+  background: rgba(138, 180, 248, 0.09);
+}
+
+/* The input is off-screen, so its focus ring has to appear on the label it
+   belongs to instead. */
+.dropzone:focus-within {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+
+/* Children take no pointer events, so a drag crossing the icon or the text
+   never reads as leaving and re-entering the target. */
+.dropzone > * {
+  pointer-events: none;
+}
+
+.dropzone__icon {
+  width: 36px;
+  height: 36px;
+  fill: currentColor;
+}
+
+.dropzone__text {
+  font-family: var(--font-head);
+  font-size: 1rem;
+}
+
+/* Available for anything that has to stay in the accessibility tree while
+   staying out of the layout. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .field input:focus-visible,
@@ -675,13 +888,30 @@ p {
 
 .previews__meta {
   font-size: 0.92rem;
+  /* Lets a long filename wrap instead of pushing the row wider than the
+     form on a phone. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-.previews__dims {
+.previews__remove {
+  flex: 0 0 auto;
   margin-left: auto;
-  font-size: 0.82rem;
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
   color: var(--muted);
-  white-space: nowrap;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.previews__remove:hover,
+.previews__remove:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--link);
+  color: var(--ink);
 }
 
 .button {
@@ -720,6 +950,102 @@ p {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+}
+
+.button--lg {
+  font-size: 1.05rem;
+  padding: 14px 28px;
+}
+
+/* The one thing the submit page wants a visitor to do. */
+.cta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 26px 0 0;
+}
+
+.cta__note {
+  font-size: 0.88rem;
+  color: var(--muted);
+  max-width: 44ch;
+}
+
+/* ---------- upload dialog ------------------------------------------------ */
+
+/* A native <dialog>: the backdrop, Escape-to-close and focus trapping are all
+   the browser's job, so there is no key handling here. The dialog carries no
+   padding of its own, which is what makes a click anywhere outside the panel
+   a click on the dialog element -- i.e. on the backdrop, which is how
+   submit.js knows to close it. */
+/* The dialog is the only thing that scrolls, so the heading, the fields and
+   the send button travel together as a single block. */
+.modal {
+  width: min(780px, 100% - 32px);
+  max-height: min(88vh, 940px);
+  overflow: auto;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  color: var(--ink);
+  /* Opaque, so the panel on top of it can be the usual translucent surface
+     without the page behind it showing through the form. */
+  background: var(--paper);
+}
+
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.modal__panel {
+  background: var(--surface);
+}
+
+.modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 26px 14px;
+}
+
+/* Carries no scrolling of its own: it is one band of the block that scrolls,
+   so it only needs its insides spaced. */
+.modal__body {
+  margin-top: 0;
+  padding: 0 26px 6px;
+}
+
+.modal__foot {
+  padding: 14px 26px 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.modal__foot .form-status {
+  margin: 0 0 12px;
+}
+
+.modal__head h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.modal__close {
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 8px 11px;
+  cursor: pointer;
+}
+
+.modal__close:hover,
+.modal__close:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ink);
 }
 
 .form-status {
@@ -896,6 +1222,10 @@ p {
 
   .calendar-frame {
     height: 480px;
+  }
+
+  .rail > * {
+    flex-basis: calc((100% - 12px) / 2);
   }
 }
 
