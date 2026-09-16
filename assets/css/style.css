@@ -355,9 +355,25 @@ p {
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  /* Cards, not a fluid grid: they come in threes, so the columns are one or
+     three and never two, which is what auto-fit kept producing in the middle
+     of the range -- two cards on one row and the third stranded below. */
+  grid-template-columns: 1fr;
   gap: 28px;
   margin-top: 28px;
+}
+
+/* Three across from the width where the old grid stopped fitting one column.
+   At the bottom of that range the cards are narrower than they were designed
+   to be, which is why .card p has to wrap long words. */
+@media (min-width: 620px) {
+  .cards {
+    /* minmax(0, ...) rather than a bare 1fr: a 1fr track still refuses to
+       shrink past its longest unbreakable word, and the email address in the
+       membership card is long enough to push the page sideways at this end of
+       the range. Zero lets the track shrink and the word wrap instead. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .card {
@@ -365,6 +381,13 @@ p {
   border: 1px solid var(--rule);
   border-radius: 6px;
   padding: 26px 24px;
+}
+
+/* Three columns make for narrow cards on a small window, where the email
+   address in the membership card is longer than the line -- without this it
+   runs out past the card's edge instead of wrapping. */
+.card p {
+  overflow-wrap: break-word;
 }
 
 /* Card logos sit inline before the title text, at emoji size, aligned like
