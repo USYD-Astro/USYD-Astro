@@ -37,3 +37,8 @@ photos:
     credit: "Murray"
     caption: "Test Photo"
     date: "2026-09-16"
+  - file: "22.jpg"
+    alt: "Photo sent in by a SUAS member"
+    credit: "Murray"
+    caption: "Test."
+    date: "2026-09-16"
