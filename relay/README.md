@@ -52,63 +52,47 @@ anything downstream.
 
 ## Removing a photo
 
-`POST /moderate` is how a photo is taken out of the gallery. It exists because
-the site is static and has no server of its own, so this is the only place a
-takedown can be authorised.
-
-**The password is `ADMIN_SECRET`, and it is compared here, in the Worker.** Set
-it once:
+A photo is taken out with one command, from a clone of the repository:
 
 ```bash
-wrangler secret put ADMIN_SECRET      # a long random string
+python3 tools/gallery.py remove 22.jpg --reason "withdrawn at the member's request"
+git commit -am "Remove a submitted photo" && git push
 ```
 
-It is never sent to the browser and never appears in the page. The remove
-button in the lightbox is hidden until an admin has typed it in that tab, but
-that hiding is cosmetic and is not what protects anything — treat the button as
-a convenience and this secret as the boundary. A wrong password and a missing
-one are answered identically, and the comparison is constant-time, so the
-endpoint does not leak how close a guess was.
+That unlists it (drops the manifest entry and regenerates the markup) and
+purges the served bytes (the original, its thumbnail, and any hero slide) in
+one commit, records it in `.contacts/removals.yml`, and re-derives both pages.
+It also refuses to leave half a job done, which is the only real danger here:
+a takedown that removed the markup but left the file would keep serving the
+photo from its old URL, so `check` fails on any such drift.
 
-**The relay does not delete anything.** It authenticates, checks the filename
-against the published manifests, and writes a request to `moderate/` on the
-submissions branch. `tools/publish_submissions.py` does the removal with the
-repository's own tooling and `gallery.py check` gates the result. That
-indirection is the point: this Worker holds a `contents: write` token, so an
-endpoint that deleted files would turn a guessed password into a write
-primitive on the repository. As written, the worst a leaked `ADMIN_SECRET` buys
-someone is removing a photo — which is what the button is for anyway.
+**This relay has nothing to do with removals, and that is deliberate.** The
+page is static, so it cannot write to the repository, and the only credential
+that can lives here as `GITHUB_TOKEN`. An endpoint that deleted files would
+turn this Worker into a write primitive for the repository, reachable from
+anywhere on the internet -- its only defence today is an `Origin` header,
+which any non-browser client can set to anything. So there is no delete
+endpoint and no admin password. An earlier version had one; it was removed
+because a password guarding it was a real credential to hand out, and because
+the cost of deploying and maintaining it was not worth a task this small.
 
-The cost is that a removal is a workflow run rather than instant. The dispatch
-makes it about a minute; the five-minute schedule is the floor if the dispatch
-is refused.
+The photo viewer still has a **Remove from gallery** button, behind a quiet
+`Admin` link. It does not delete anything and needs no password: it opens a
+prefilled GitHub issue naming the photo and the reason given, which is where
+the request and the account that made it are recorded. Whoever has write
+access runs the command above. GitHub is already the thing that decides who
+counts, so there is nothing to set up.
 
 ### What a removal does and does not do
 
-It **unlists** the photo (manifest entry and markup) and **purges the served
-bytes** (the original, its thumbnail, and any hero slide). After that the page
+It **unlists** the photo and **purges the served bytes**. After that the page
 no longer shows it and its URL stops serving it.
 
 It does **not** make the photo unrecoverable. The bytes remain in git history,
 fetchable at a pinned commit SHA, and web archives keep their own copies. For
 a genuine consent withdrawal, someone still has to rewrite history
 (`git filter-repo`) with a coordinated force-push, and request removal from
-archives. The button says "remove from gallery" rather than "delete
-permanently" for this reason — do not describe it to a member as erasure.
-
-Every removal appends to the removal log with the reason, who asked and when,
-and every submission appends the submitter's name and email to the contact log.
-Both are committed to the `contacts` branch, which Pages does not deploy, so
-they double as the paper trail and as the evidence that a takedown asked for on
-request was carried out — and neither is ever on `main`, where Pages would serve
-it in plain text.
-
-If you need a photo gone *without* going through the site, the same thing is
-one command:
-
-```bash
-python3 tools/gallery.py remove 22.jpg --reason "withdrawn at the member's request"
-```
+archives. Do not describe a removal to a member as erasure.
 
 ## Deploying it
 
@@ -132,7 +116,6 @@ cd relay
 npm install -g wrangler     # or: npx wrangler
 wrangler login
 wrangler secret put GITHUB_TOKEN      # paste the token from step 1
-wrangler secret put ADMIN_SECRET      # enables the remove button
 wrangler deploy
 ```
 
@@ -146,10 +129,6 @@ curl https://suas-photo-relay.<your-subdomain>.workers.dev/health
 It answers `configured:false` until the token secret exists, and the form will
 refuse to submit in that state rather than failing halfway through an upload.
 
-`/moderate` is disabled until `ADMIN_SECRET` is set, and says so, rather than
-existing with no password. Rotate it with `wrangler secret put ADMIN_SECRET` —
-it is the only thing authorising a takedown, so treat it like the token.
-
 ### 2. Point the site at the relay
 
 In `submit.html`, fill in the data attribute on the form:
@@ -162,14 +141,6 @@ In `submit.html`, fill in the data attribute on the form:
 The URL is public by design. While `data-relay` is empty the form says uploads
 are not switched on yet, rather than letting someone fill the whole thing in
 and then fail.
-
-The remove button is configured separately, on `<body>` of every page, because
-it also appears in the lightbox on the home page gallery — which has no upload
-form to read a relay URL from:
-
-```html
-<body data-moderate-endpoint="https://suas-photo-relay.<your-subdomain>.workers.dev/moderate">
-```
 
 ## Testing it
 

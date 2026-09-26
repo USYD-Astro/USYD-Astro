@@ -1,17 +1,10 @@
 # The photo upload relay. See README.md in this directory for deployment.
 #
-# Secrets are NOT in this file. Set each one once with `wrangler secret put`:
+# Secrets are NOT in this file. Set this one with `wrangler secret put`:
 #
 #   GITHUB_TOKEN      a fine-grained personal access token, scoped to this
 #                     repository only, with "Contents: Read and write".
 #                     Nothing else. Do not reuse a personal token.
-#   ADMIN_SECRET      the password the gallery's remove button asks for. It is
-#                     compared in the Worker and never sent to the browser, so
-#                     unlike everything else about this relay it is a real
-#                     credential: use a long random string, not a word. Rotate
-#                     it with `wrangler secret put ADMIN_SECRET`. The site is
-#                     static, so this secret is the ONLY thing authorising a
-#                     takedown -- see relay/README.md.
 
 name = "suas-photo-relay"
 main = "src/worker.js"

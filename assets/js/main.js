@@ -144,72 +144,42 @@
   }
 
   /* ---- removing a photo ------------------------------------------------- */
-  /* The button an administrator uses to take a photo out of the gallery.
-     It posts to the relay, which checks the password and queues the request;
-     the publishing Action does the removal with the repository's own tooling.
+  /* The button a committee member uses to take a photo out of the gallery.
 
-     HIDING THIS BUTTON IS NOT THE SECURITY. The site is static -- there is
-     nothing here that could check a password -- so the button is merely kept
-     off ordinary visitors' screens. The only thing authorising a removal is
-     ADMIN_SECRET, compared in the Worker, and it is deliberately not here: a
-     secret in this file would be in every visitor's browser. Treat this whole
-     block as convenience; treat the relay as the boundary. */
-  var MODERATE = (function () {
-    /* Configured on <body> of every page, because the remove button appears in
-       the lightbox on the home page gallery too, and that page has no upload
-       form to read a relay URL from. */
-    var host = document.querySelector("[data-moderate-endpoint]");
-    return host ? host.dataset.moderateEndpoint : "";
-  })();
+     It does not delete anything itself, and it needs no password to do its
+     job. A static page cannot write to the repository -- the only credential
+     for that lives in the upload relay, as a Cloudflare Worker secret -- so
+     any password checked here would be decoration. Instead the button files
+     the request on GitHub, where the account you are already signed in to
+     decides whether it counts: only someone with write access can act on it,
+     and the issue itself is the record of who asked and why.
 
-  var UNLOCK_KEY = "suas:moderator";
+     The removal is then one command:
+         python3 tools/gallery.py remove NN.jpg --reason "..."
 
-  function isUnlocked() {
-    try {
-      return window.sessionStorage.getItem(UNLOCK_KEY) === "1";
-    } catch (e) {
-      /* Private browsing, or storage disabled. Not a reason to break the
-         gallery, so this just means asking again each time. */
-      return false;
-    }
-  }
-
-  function unlock() {
-    try {
-      window.sessionStorage.setItem(UNLOCK_KEY, "1");
-    } catch (e) {
-      // Nothing to do: the button still works, it just asks each time.
-    }
-  }
-
-  function askForSecret() {
-    // A prompt rather than a form in the page: there is nothing else to show,
-    // and a modal of our own would be more code than the whole feature.
-    var given = window.prompt(
-      "This removes the photo from the site. Enter the administrator password."
-    );
-    return given;
-  }
+     HIDING THIS BUTTON IS NOT THE SECURITY EITHER. It is kept off ordinary
+     visitors' screens because it is not for them, not because anything
+     depends on them not finding it. */
+  var REPO = "USYD-Astro/USYD-Astro";
 
   function removeControl(thumb) {
     var wrap = document.createElement("p");
     wrap.className = "lightbox__admin";
 
-    if (!MODERATE) {
-      /* No endpoint configured, so there is nothing this button could do.
-         Say so rather than offering a control that always fails. */
+    var name = filenameFor(thumb);
+    if (!name) {
+      /* A photo added to the rail from this page has no published name yet, so
+         there is nothing in the repository to remove. */
       var none = document.createElement("span");
       none.className = "lightbox__admin-note";
-      none.textContent = "Removal is not configured on this site.";
+      none.textContent = "This photo is not published yet.";
       wrap.appendChild(none);
       return wrap;
     }
 
-    /* The remove button starts hidden, and a hidden button cannot be clicked --
-       so nothing here would ever ask for the password, and the admin tools
-       would be unreachable in a fresh tab. So what is always present is a
-       quiet "Admin" link that reveals the button; the destructive control
-       itself is still a deliberate second click. */
+    /* Always present, so the remove button is reachable to be revealed.
+       Quiet on purpose -- a way in for the committee, not something to
+       advertise. */
     var reveal = document.createElement("button");
     reveal.type = "button";
     reveal.className = "lightbox__admin-reveal";
@@ -220,7 +190,7 @@
     button.type = "button";
     button.className = "lightbox__remove";
     button.textContent = "Remove from gallery";
-    button.hidden = !isUnlocked();
+    button.hidden = true;
 
     reveal.addEventListener("click", function () {
       button.hidden = !button.hidden;
@@ -231,71 +201,23 @@
     });
 
     button.addEventListener("click", function () {
-      if (button.disabled) {
-        return;
-      }
       var reason = window.prompt(
-        "Why is this photo being removed? This is recorded in the repository.",
+        "Why is this photo being removed? This goes into the request.",
         ""
       );
       if (reason === null) {
         return;
       }
-      var secret = isUnlocked() ? "" : askForSecret();
-      if (secret === null) {
-        return;
-      }
-      button.disabled = true;
-      button.textContent = "Removing…";
-      fetch(MODERATE, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          // Sent as a header rather than in the body so it cannot end up in a
-          // log of request bodies, and so a wrong password is refused before
-          // the request is looked at any further.
-          "x-admin-secret": secret,
-        },
-        body: JSON.stringify({ filename: filenameFor(thumb), reason: reason }),
-      })
-        .then(function (response) {
-          return response.json().then(function (data) {
-            return { ok: response.ok, data: data };
-          });
-        })
-        .then(function (result) {
-          if (result.ok && result.data && result.data.ok) {
-            unlock();
-            button.hidden = false;
-            reveal.setAttribute("aria-expanded", "true");
-            /* The photo is coming off the site in about a minute, so this is
-               the end of the view rather than something to go back from. */
-            hide();
-            window.alert(
-              "That photo is off the site. It takes about a minute, and the " +
-                "removal is recorded in the repository."
-            );
-            return;
-          }
-          var message =
-            (result.data && result.data.error) || "The removal did not work.";
-          if (result.data && /not authorised/i.test(message)) {
-            // Wrong password: ask again next time rather than remembering a
-            // failed attempt as an unlock. The button is hidden again, but the
-            // Admin link that reveals it stays, so a second attempt is still
-            // possible.
-            button.hidden = true;
-            reveal.setAttribute("aria-expanded", "false");
-          }
-          button.disabled = false;
-          button.textContent = "Remove from gallery";
-          window.alert(message);
-        })
-        .catch(function () {
-          button.disabled = false;
-          button.textContent = "Remove from gallery";
-          window.alert("We could not reach the relay. Is the site online?");
-        });
+      var body =
+        "Please remove this photo from the gallery.\n\n" +
+        "Photo: `" + name + "`\n" +
+        "Reason: " + (reason || "_(not given)_") + "\n\n" +
+        "_Filed from the photo viewer on the site._";
+      var url =
+        "https://github.com/" + REPO + "/issues/new?title=" +
+        encodeURIComponent("Remove " + name + " from the gallery") +
+        "&body=" + encodeURIComponent(body);
+      window.open(url, "_blank", "noopener");
     });
 
     wrap.appendChild(reveal);
@@ -303,10 +225,9 @@
     return wrap;
   }
 
-  /* The gallery filename a thumbnail belongs to, which is what the relay wants.
-     data-full is the path we published it at, so the name is the last part of
-     it; a photo added to the rail from this page has no published name and
-     cannot be removed, since it is not published yet. */
+  /* The gallery filename a thumbnail belongs to, which is what the removal
+     command needs. data-full is the path we published it at, so the name is
+     the last part of it. */
   function filenameFor(thumb) {
     var full = thumb.dataset.full || "";
     var name = full.split("/").pop() || "";
