@@ -658,18 +658,6 @@ p {
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* The way back to a member who sent a photo in. The address is the society's
-   own, deliberately: the member's is not published. */
-.lightbox__contact {
-  font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.6);
-  margin-top: 8px !important;
-}
-
-.lightbox__contact a {
-  color: rgba(255, 255, 255, 0.85);
-}
-
 /* The administrator's remove control. Visually quiet on purpose: it is here
    for the committee, not as a feature of the gallery, and it must never look
    like something a visitor is being invited to press. */

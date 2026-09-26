@@ -83,15 +83,6 @@
   var meta = null;
   var index = 0;
 
-  /* The society's own address, read from the mailto link already in the footer
-     rather than written out a third time here. It is the route to a member who
-     sent a photo, not the member's address: submitted addresses are kept in
-     .contacts/ in the repository and are deliberately never published. */
-  var mailtoLink = document.querySelector('a[href^="mailto:"]');
-  var contactAddress = mailtoLink
-    ? mailtoLink.getAttribute("href").replace(/^mailto:/, "").split("?")[0]
-    : "usydastronomy@gmail.com";
-
   function register(list) {
     Array.prototype.slice.call(list).forEach(function (img) {
       thumbs.push(img);
@@ -149,17 +140,6 @@
     var line = document.createElement("p");
     line.className = className;
     line.textContent = text;
-    return line;
-  }
-
-  function contact() {
-    var line = document.createElement("p");
-    line.className = "lightbox__contact";
-    line.appendChild(document.createTextNode("About this photo? Write to "));
-    var link = document.createElement("a");
-    link.href = "mailto:" + contactAddress;
-    link.textContent = contactAddress;
-    line.appendChild(link);
     return line;
   }
 
@@ -368,11 +348,6 @@
     }
     if (data.date) {
       meta.appendChild(detail("Sent in " + readableDate(data.date), "lightbox__date"));
-    }
-    /* Only for photos a member sent in -- the home page gallery is ours, and
-       there is nobody there to contact. */
-    if (thumb.closest(".rail")) {
-      meta.appendChild(contact());
     }
     /* Both galleries can have a photo taken out of them, so this is not
        limited to the rail. */
