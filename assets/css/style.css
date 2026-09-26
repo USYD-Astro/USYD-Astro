@@ -1090,12 +1090,6 @@ p {
   margin: 26px 0 0;
 }
 
-.cta__note {
-  font-size: 0.88rem;
-  color: var(--muted);
-  max-width: 44ch;
-}
-
 /* ---------- upload dialog ------------------------------------------------ */
 
 /* A native <dialog>: the backdrop, Escape-to-close and focus trapping are all
