@@ -525,6 +525,40 @@ p {
   color: var(--muted);
 }
 
+/* A photo the visitor has just sent, shown in the rail before the publishing
+   Action has caught up with it. It is their own file rather than the copy
+   the site serves, so it is dashed rather than solid and says so: an
+   unmarked tile would be indistinguishable from a published one, and this
+   belongs on the page for the length of a page view and no longer. */
+.rail__item--pending {
+  position: relative;
+  outline: 1px dashed var(--rule);
+  outline-offset: -1px;
+}
+
+.rail__flag {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  /* The tile zooms on hover and the flag has no business coming with it. */
+  pointer-events: none;
+}
+
+/* Says what happened after an upload, since the dialog closes on success. */
+.rail__note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 .rail__nav {
   display: flex;
   gap: 8px;
@@ -622,6 +656,70 @@ p {
 .lightbox__date {
   font-size: 0.82rem;
   color: rgba(255, 255, 255, 0.6);
+}
+
+/* The way back to a member who sent a photo in. The address is the society's
+   own, deliberately: the member's is not published. */
+.lightbox__contact {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 8px !important;
+}
+
+.lightbox__contact a {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* The administrator's remove control. Visually quiet on purpose: it is here
+   for the committee, not as a feature of the gallery, and it must never look
+   like something a visitor is being invited to press. */
+.lightbox__admin {
+  margin-top: 12px;
+}
+
+.lightbox__remove {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.lightbox__remove:hover,
+.lightbox__remove:focus-visible {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.lightbox__remove[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.lightbox__admin-note {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* Always present, so the remove button is reachable to be unlocked. Quiet on
+   purpose -- it is a way in for the committee, not something to advertise. */
+.lightbox__admin-reveal {
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  color: rgba(255, 255, 255, 0.4);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+}
+
+.lightbox__admin-reveal:hover,
+.lightbox__admin-reveal:focus-visible {
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .lightbox__bar {

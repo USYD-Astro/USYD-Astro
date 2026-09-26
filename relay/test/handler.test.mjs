@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { webcrypto } from "node:crypto";
 
-import { handleUpload } from "../src/handler.js";
+import { handleUpload, handleModerate } from "../src/handler.js";
 
 if (!globalThis.crypto) {
   globalThis.crypto = webcrypto;
@@ -22,6 +22,7 @@ const ENV = {
   ALLOWED_ORIGIN: "https://usyd-astro.github.io",
   SUBMISSIONS_BRANCH: "submissions",
   BASE_BRANCH: "main",
+  ADMIN_SECRET: "correct-horse-battery-staple",
 };
 
 const ORIGIN = "https://usyd-astro.github.io";
@@ -52,11 +53,33 @@ function stubRequest({ method = "POST", origin = ORIGIN, meta, photos = [] } = {
 }
 
 /* A fake GitHub API. Records every call so tests can assert on them. */
-function fakeFetch({ failCommit = false, branchExists = true } = {}) {
+function fakeFetch({
+  failCommit = false,
+  failDispatch = false,
+  branchExists = true,
+  manifests = {},
+} = {}) {
   const calls = [];
   const impl = async (url, init = {}) => {
-    calls.push({ url: String(url), method: init.method || "GET" });
+    calls.push({ url: String(url), method: init.method || "GET", body: init.body });
 
+    if (String(url).endsWith("/dispatches")) {
+      if (failDispatch) return new Response("nope", { status: 403 });
+      return new Response("", { status: 204 });
+    }
+    // A manifest read, as the removal endpoint does before it queues
+    // anything: the answer is the file's base64 content, as the Contents API
+    // gives it.
+    if (!init.method || init.method === "GET") {
+      for (const [name, text] of Object.entries(manifests)) {
+        if (String(url).includes(`/contents/${name}`)) {
+          return new Response(
+            JSON.stringify({ content: btoa(text) }),
+            { status: 200 }
+          );
+        }
+      }
+    }
     if (String(url).includes("/git/ref/heads/")) {
       // Only the submissions branch may be missing; main always exists.
       const isSubmissions = String(url).includes("/heads/submissions");
@@ -81,6 +104,233 @@ function fakeFetch({ failCommit = false, branchExists = true } = {}) {
 }
 
 const body = async (response) => response.json();
+
+/* A stand-in for the removal request: a method, an origin, a secret header
+   and a JSON body. */
+function stubModerate({
+  method = "POST",
+  origin = ORIGIN,
+  secret = ENV.ADMIN_SECRET,
+  payload = { filename: "22.jpg", reason: "withdrawn at the member's request" },
+  raw = null,
+} = {}) {
+  return {
+    method,
+    headers: {
+      get: (key) => {
+        const name = key.toLowerCase();
+        if (name === "origin") return origin;
+        if (name === "x-admin-secret") return secret;
+        return null;
+      },
+    },
+    json: async () => {
+      if (raw !== null) throw new SyntaxError("bad json");
+      return payload;
+    },
+  };
+}
+
+const PUBLISHED = {
+  "assets/data/submissions.yml": 'photos:\n  - file: "22.jpg"\n    credit: "Murray"\n',
+  // 03.png is real: the curated gallery is not entirely .jpg, and a photo
+  // that cannot be taken down is worse than one that is merely awkward to.
+  "assets/data/gallery.yml": 'photos:\n  - file: 03.png\n  - file: "01.jpg"\n',
+};
+
+/* ---- removal ---------------------------------------------------------- */
+
+test("removal: queues a takedown for a published photo", async () => {
+  const fetchStub = fakeFetch({ manifests: PUBLISHED });
+  const response = await handleModerate(stubModerate(), ENV, { fetch: fetchStub });
+  assert.equal(response.status, 200);
+  const result = await body(response);
+  assert.equal(result.ok, true);
+  // commitFile probes for an existing blob before writing, so the queued
+  // request is the PUT under contents/moderate/, not the GET beside it.
+  const queued = fetchStub.calls.find(
+    (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
+  );
+  assert.ok(queued, "a removal request was committed to the queue branch");
+  // The branch is in the PUT body, not the URL: that is what makes this a
+  // commit to the unserved queue rather than to main.
+  const sent = JSON.parse(queued.body);
+  assert.equal(sent.branch, "submissions");
+  const written = JSON.parse(atob(sent.content));
+  assert.equal(written.filename, "22.jpg");
+  assert.match(written.reason, /withdrawn/);
+});
+
+test("removal: refuses a wrong or missing secret", async () => {
+  for (const secret of ["", "wrong", ENV.ADMIN_SECRET + "x", ENV.ADMIN_SECRET.slice(0, -1)]) {
+    const fetchStub = fakeFetch({ manifests: PUBLISHED });
+    const response = await handleModerate(
+      stubModerate({ secret }),
+      ENV,
+      { fetch: fetchStub }
+    );
+    assert.equal(response.status, 401, `secret ${JSON.stringify(secret)} must be refused`);
+    assert.equal(
+      fetchStub.calls.some(
+        (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
+      ),
+      false,
+      "nothing may be queued without the secret"
+    );
+  }
+});
+
+test("removal: a wrong secret and an absent one are indistinguishable", async () => {
+  const wrong = await handleModerate(stubModerate({ secret: "nope" }), ENV, {
+    fetch: fakeFetch({ manifests: PUBLISHED }),
+  });
+  const absent = await handleModerate(stubModerate({ secret: "" }), ENV, {
+    fetch: fakeFetch({ manifests: PUBLISHED }),
+  });
+  assert.equal(wrong.status, absent.status);
+  assert.deepEqual(await body(wrong), await body(absent));
+});
+
+test("removal: refuses anything that is not a plain gallery filename", async () => {
+  // The one guard standing between this endpoint and the repository token, so
+  // it gets the hostile cases rather than the polite one.
+  const hostile = [
+    "../../.github/workflows/gallery.yml",
+    "assets/data/gallery.yml",
+    "../secrets.txt",
+    "22.jpg/../../x",
+    "22.JPG",
+    "22.jpg?ref=main",
+    "22.jpg#x",
+    "/etc/passwd",
+    "22",
+    "",
+    "9".repeat(80) + ".jpg",
+  ];
+  for (const filename of hostile) {
+    const fetchStub = fakeFetch({ manifests: PUBLISHED });
+    const response = await handleModerate(
+      stubModerate({ payload: { filename } }),
+      ENV,
+      { fetch: fetchStub }
+    );
+    assert.ok(
+      response.status === 400 || response.status === 404,
+      `${JSON.stringify(filename)} must be refused, got ${response.status}`
+    );
+    assert.equal(
+      fetchStub.calls.some(
+        (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
+      ),
+      false,
+      `${JSON.stringify(filename)} must not queue anything`
+    );
+  }
+});
+
+test("removal: a photo that is not published is a no-op, not a queued lookup", async () => {
+  const fetchStub = fakeFetch({ manifests: PUBLISHED });
+  const response = await handleModerate(
+    stubModerate({ payload: { filename: "99.jpg" } }),
+    ENV,
+    { fetch: fetchStub }
+  );
+  assert.equal(response.status, 404);
+  assert.equal(
+    fetchStub.calls.some(
+      (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
+    ),
+    false
+  );
+});
+
+test("removal: works for a curated home-page photo too", async () => {
+  const fetchStub = fakeFetch({ manifests: PUBLISHED });
+  const response = await handleModerate(
+    stubModerate({ payload: { filename: "01.jpg" } }),
+    ENV,
+    { fetch: fetchStub }
+  );
+  assert.equal(response.status, 200);
+});
+
+test("removal: a published photo that is not a jpg can still be removed", async () => {
+  const fetchStub = fakeFetch({ manifests: PUBLISHED });
+  const response = await handleModerate(
+    stubModerate({ payload: { filename: "03.png" } }),
+    ENV,
+    { fetch: fetchStub }
+  );
+  assert.equal(response.status, 200);
+  const queued = fetchStub.calls.find(
+    (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
+  );
+  assert.equal(JSON.parse(atob(JSON.parse(queued.body).content)).filename, "03.png");
+});
+
+test("removal: says so when the relay has no admin secret set", async () => {
+  const response = await handleModerate(stubModerate(), { ...ENV, ADMIN_SECRET: "" }, {
+    fetch: fakeFetch({ manifests: PUBLISHED }),
+  });
+  assert.equal(response.status, 503);
+  assert.match((await body(response)).error, /not set up/i);
+});
+
+test("removal: refuses a different origin and non-POST, like the upload", async () => {
+  const other = await handleModerate(
+    stubModerate({ origin: "https://evil.example" }),
+    ENV,
+    { fetch: fakeFetch({ manifests: PUBLISHED }) }
+  );
+  assert.equal(other.status, 403);
+  const wrongMethod = await handleModerate(
+    stubModerate({ method: "GET" }),
+    ENV,
+    { fetch: fakeFetch({ manifests: PUBLISHED }) }
+  );
+  assert.equal(wrongMethod.status, 405);
+});
+
+test("removal: a malformed body does not become a queued file", async () => {
+  const fetchStub = fakeFetch({ manifests: PUBLISHED });
+  const response = await handleModerate(stubModerate({ raw: "{" }), ENV, {
+    fetch: fetchStub,
+  });
+  assert.equal(response.status, 400);
+  assert.equal(
+    fetchStub.calls.some(
+      (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
+    ),
+    false
+  );
+});
+
+test("removal: a refused dispatch still reports the removal as queued", async () => {
+  // The request is committed to the queue either way; the dispatch is only
+  // what makes it fast, and the five-minute schedule is the floor.
+  const fetchStub = fakeFetch({ manifests: PUBLISHED, failDispatch: true });
+  const response = await handleModerate(stubModerate(), ENV, { fetch: fetchStub });
+  assert.equal(response.status, 200);
+  assert.ok(
+    fetchStub.calls.some(
+      (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
+    )
+  );
+});
+
+test("removal: an unknown photo does not fail the run when a manifest is unreadable", async () => {
+  // A manifest the relay cannot read must not be treated as "no photos",
+  // and must not be treated as "every photo" either.
+  const fetchStub = fakeFetch({ manifests: {} });
+  const response = await handleModerate(stubModerate(), ENV, { fetch: fetchStub });
+  assert.equal(response.status, 404);
+  assert.equal(
+    fetchStub.calls.some(
+      (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
+    ),
+    false
+  );
+});
 
 test("rejects anything that is not POST", async () => {
   const response = await handleUpload(stubRequest({ method: "GET" }), ENV, { fetch: fakeFetch() });
@@ -254,4 +504,46 @@ test("an upload with no origin header is refused, so it cannot be posted from no
     { fetch: fakeFetch() }
   );
   assert.equal(response.status, 403);
+});
+
+test("asks the publishing workflow to run as soon as the photos are committed", async () => {
+  const github = fakeFetch();
+  const response = await handleUpload(
+    stubRequest({ photos: [fakeFile("a.jpg", "image/jpeg")] }),
+    ENV,
+    { fetch: github }
+  );
+  assert.equal(response.status, 200);
+  const { id } = await body(response);
+
+  const dispatch = github.calls.find((c) => c.url.endsWith("/dispatches"));
+  assert.ok(dispatch, "a dispatch is sent");
+  assert.equal(dispatch.method, "POST");
+
+  const event = JSON.parse(dispatch.body);
+  assert.equal(event.event_type, "photo-submitted", "matches the workflow trigger");
+  assert.equal(event.client_payload.id, id, "names the submission that was just committed");
+  assert.equal(event.client_payload.branch, "submissions", "the queue branch the photos landed on");
+
+  /* The dispatch is only worth anything once the photos are safely on the
+     queue, so it has to come last rather than in the middle of the commits. */
+  const writes = github.calls.filter((c) => c.method === "PUT");
+  assert.ok(
+    github.calls.indexOf(dispatch) > github.calls.indexOf(writes[writes.length - 1]),
+    "dispatched after the last commit"
+  );
+});
+
+test("a refused dispatch does not turn a stored submission into a failure", async () => {
+  const github = fakeFetch({ failDispatch: true });
+  const response = await handleUpload(
+    stubRequest({ photos: [fakeFile("a.jpg", "image/jpeg")] }),
+    ENV,
+    { fetch: github }
+  );
+  /* The photos are on the queue branch, where the schedule will find them.
+     Failing the request here would only tell the submitter something untrue,
+     and make them send the same photos again. */
+  assert.equal(response.status, 200);
+  assert.equal((await body(response)).ok, true);
 });

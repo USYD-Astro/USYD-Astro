@@ -56,6 +56,21 @@
   var opener = document.getElementById("open-upload");
   var closer = document.getElementById("close-upload");
 
+  /* Declared out here rather than inside the block below, because a
+     successful upload closes the dialog too: the point of putting the photos
+     in the gallery straight away is that the submitter can go and see them. */
+  function closeDialog() {
+    if (!dialog) {
+      return;
+    }
+    if (typeof dialog.close === "function") {
+      dialog.close();
+    } else {
+      dialog.removeAttribute("open");
+      document.body.style.overflow = "";
+    }
+  }
+
   if (dialog && opener) {
     opener.addEventListener("click", function () {
       if (typeof dialog.showModal === "function") {
@@ -71,15 +86,6 @@
         input.focus();
       }
     });
-
-    function closeDialog() {
-      if (typeof dialog.close === "function") {
-        dialog.close();
-      } else {
-        dialog.removeAttribute("open");
-        document.body.style.overflow = "";
-      }
-    }
 
     if (closer) {
       closer.addEventListener("click", closeDialog);
@@ -318,17 +324,85 @@
     return body;
   }
 
+  /* What the request in flight actually carries, snapshotted when it is
+     built. The form stays editable while the upload runs -- a submitter can
+     still take a photo back out of the list, or pick a different set, or
+     correct their name -- so what is on screen when the reply arrives is not
+     necessarily what was sent. The gallery has to show what was sent, or it
+     shows a photo nobody uploaded and hides one that was.
+
+     There is no credit field, so the name they gave is the credit, which is
+     the same fallback tools/publish_submissions.py applies downstream. */
+  var sent = null;
+
+  function snapshot() {
+    return {
+      photos: prepared.slice(),
+      credit: value("name"),
+      caption: value("caption"),
+    };
+  }
+
+  /* Hand the photos just sent to the gallery, so they appear in the rail
+     immediately instead of whenever the publishing Action next runs. */
+  function announce(what) {
+    if (!what || !what.photos.length) {
+      return;
+    }
+    document.dispatchEvent(
+      new CustomEvent("suas:submissions-added", {
+        detail: {
+          photos: what.photos.map(function (entry) {
+            return { file: entry.file };
+          }),
+          credit: what.credit,
+          caption: what.caption,
+          date: today(),
+        },
+      })
+    );
+  }
+
+  /* Local, so a submitter in Sydney who sends a photo at 9am sees the 9th
+     rather than the UTC date. The published entry carries the relay's
+     timestamp, which is UTC, so the two can differ by a day near midnight --
+     cosmetic, and the sort of thing nobody reads twice. */
+  function today() {
+    var now = new Date();
+    return (
+      now.getFullYear() +
+      "-" +
+      ("0" + (now.getMonth() + 1)).slice(-2) +
+      "-" +
+      ("0" + now.getDate()).slice(-2)
+    );
+  }
+
   function fail(message) {
     say(message, "warn");
+    /* Nothing was stored, so nothing may be announced when the next attempt
+       succeeds. */
+    sent = null;
     submitBtn.disabled = false;
     submitBtn.textContent = "Send my photos";
   }
 
   function succeed(message) {
     say(message, "ok");
-    form.reset();
+    /* The list is emptied before the tiles are made, because render() revokes
+       the preview object URLs and a gallery tile that borrowed one of those
+       would be left pointing at a revoked URL. The tiles make their own; a
+       blob is a view onto a file already in memory, so the second set costs
+       nothing next to re-encoding anything. */
     prepared = [];
     render();
+    announce(sent);
+    sent = null;
+    form.reset();
+    /* The dialog has stood between the submitter and the gallery all the way
+       through this, and it is finished with. main.js scrolls to the photos
+       on the next frame, once the page is scrollable again. */
+    closeDialog();
     submitBtn.disabled = false;
     submitBtn.textContent = "Send my photos";
   }
@@ -401,6 +475,9 @@
     submitBtn.disabled = true;
     submitBtn.textContent = "Sending\u2026";
     say("Uploading your photos\u2026");
+    /* Taken before the body is built, so the two cannot disagree about which
+       photos this request carries. */
+    sent = snapshot();
     upload(buildForm());
   });
 

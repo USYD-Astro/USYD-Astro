@@ -26,8 +26,10 @@
 # slide, because it never appears in the home page slideshow.
 #
 # Note that submitter email addresses are deliberately NOT stored here: this
-# file is published with the site. Contact details stay on the submissions
-# branch and in submissions/contacts.yml, neither of which is served.
+# file is published with the site. Contact details go to .contacts/contacts.yml
+# in the repository, which is committed so the committee can follow up but is
+# never served, because GitHub Pages does not publish dot-directories. They also
+# stay on the submissions branch, which Pages does not serve at all.
 
 # Starts empty, and deliberately without a `[]`: entries are appended in block
 # form, which needs the key to have no value written next to it.
