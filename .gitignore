@@ -9,18 +9,24 @@ reference/contact-sheet.html
 reference/originals/
 
 # Staging area for photo uploads. The relay's working copy of the
-# submissions branch lands here, and tools/gallery.py add --email used to write
-# contacts here; neither belongs in the published tree, so it stays untracked.
-# Contact details now live in .contacts/, which IS tracked. Read the next
-# section before assuming why that is safe.
+# submissions branch lands here, and neither it nor the contact log belongs in
+# the published tree. Contact details go to the `contacts` branch; see the
+# .contacts/ note below before assuming why that is safe.
 submissions/
 
-# .contacts/ is deliberately NOT ignored, and deliberately not moved here.
-# It holds submitters' names and email addresses for the committee, and the
-# safety of publishing them rests on one thing: GitHub Pages skips directories
-# whose name starts with a dot, so .contacts/ is never served. That is not true
-# of dot-FILES -- this very .gitignore is published at /.gitignore -- so the
-# directory has to stay a directory.
+# The contact log and removal log, as a local working copy. See below.
+.contacts/
+
+# .contacts/ is the local working copy of the submitter contact log and the
+# removal log. It is ignored HERE, on main, because main is published: GitHub
+# Pages serves everything on this branch and it does serve dot-directories --
+# .contacts/contacts.yml came back in plain text over HTTP when it was
+# committed. Pages excludes .git and .github by name; that is not a general
+# rule about dot-directories and must not be relied on.
+#
+# The publishing workflow commits these files to the `contacts` branch, which
+# Pages does not deploy. They are readable by anyone with access to the
+# repository and served to nobody. Keep it that way.
 
 # Wrangler's local build output, if the relay is developed in place.
 relay/node_modules/

@@ -18,10 +18,12 @@ expanded view on submit.html shows. The submitter's *name* is used only as a
 fallback credit when they left the credit field empty.
 
 The email address is not published, but it is not thrown away either: it is
-recorded alongside the submitter's name in .contacts/contacts.yml, which is
-committed to the repository for the committee to use and is not served with the
-site because GitHub Pages does not publish dot-directories. See the header in
-that file before moving anything.
+recorded alongside the submitter's name in .contacts/contacts.yml, a local
+working copy that the publishing Action commits to the `contacts` branch. That
+branch is the point: everything on main is served by GitHub Pages, and Pages
+does serve dot-directories, so a log kept on main would be public. Nothing
+deploys a branch other than main. See the header in that file before moving
+anything.
 
 Removal requests are drained here too, from the `moderate/` directory the relay
 queues them in, and applied with tools/gallery.py. Nothing is removed by the
@@ -177,7 +179,7 @@ def main() -> int:
 
     print(f"\n  published {published} submission(s) into the submit page gallery")
     if contacts:
-        print(f"  recorded {contacts} contact(s) in .contacts/contacts.yml (not published)")
+        print(f"  recorded {contacts} contact(s) in .contacts/contacts.yml (goes to the contacts branch)")
     if removed:
         print(f"  removed {removed} photo(s) from the gallery")
     return 0

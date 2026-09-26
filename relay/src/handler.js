@@ -485,9 +485,10 @@ export async function handleUpload(request, env, deps = {}) {
 
     /* The contact details land here, on the submissions branch, which GitHub
        Pages does not serve. They never reach the published manifests: the
-       publishing workflow copies the email into .contacts/ in the repository,
-       which is committed but not served, and leaves it out of everything under
-       assets/data/. */
+       publishing workflow copies the name and email to the `contacts` branch,
+       which Pages does not deploy either, and leaves them out of everything
+       under assets/data/. Nothing about them may land on main -- Pages serves
+       every path there, dot-directories included. */
     await commitFile(
       {
         repo: env.GITHUB_REPO,

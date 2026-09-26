@@ -96,9 +96,12 @@ a genuine consent withdrawal, someone still has to rewrite history
 archives. The button says "remove from gallery" rather than "delete
 permanently" for this reason — do not describe it to a member as erasure.
 
-Every removal appends to `.contacts/removals.yml` with the reason, who asked
-and when. That file is committed and never served, so it doubles as the paper
-trail and as the evidence that a takedown asked for on request was carried out.
+Every removal appends to the removal log with the reason, who asked and when,
+and every submission appends the submitter's name and email to the contact log.
+Both are committed to the `contacts` branch, which Pages does not deploy, so
+they double as the paper trail and as the evidence that a takedown asked for on
+request was carried out — and neither is ever on `main`, where Pages would serve
+it in plain text.
 
 If you need a photo gone *without* going through the site, the same thing is
 one command:

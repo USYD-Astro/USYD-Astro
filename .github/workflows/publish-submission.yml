@@ -11,11 +11,12 @@ name: Publish photo submissions
 # submit.html, NOT to the home page gallery, which stays a curated selection
 # of photos. That also means submitted photos get no hero slide.
 #
-# Each submitter's name and email are also recorded in .contacts/contacts.yml,
-# which IS committed to this branch so the committee can follow up. It is never
-# served: GitHub Pages publishes the branch verbatim but skips dot-directories,
-# so the addresses are reachable to anyone with repository access and to nobody
-# on the web. Keep it that way -- nothing from .contacts may be copied into
+# Each submitter's name and email are recorded in the contact log, which is
+# committed to the `contacts` branch rather than to main. That is not
+# tidiness: GitHub Pages publishes every path on this branch, and it does serve
+# dot-directories -- .contacts/contacts.yml was served in plain text over HTTP
+# while it was committed here. A branch is the one thing that is provably not
+# deployed, so the log lives there. Nothing from it may ever be copied into
 # assets/data/, which is published.
 #
 # Submissions publish automatically: the relay enforces consent, size, type and
@@ -174,21 +175,64 @@ jobs:
           # .contacts is the submitter contact log. It has to be staged here or
           # every automated run would record addresses it then drops, leaving
           # the committee with no way to reply to anyone.
-          # .contacts is the submitter contact log and removal log. It has to be
-          # staged here or every automated run would record entries it then
-          # drops, leaving the committee with no way to reply to anyone and no
-          # record of what was taken down and why. It is a separate add because
-          # it is the one path that may not exist yet: git add fails outright on
-          # a pathspec matching nothing, which under set -e would fail the run
-          # over a missing log directory.
+          # The contact log and removal log are NOT staged here. They are
+          # committed to the `contacts` branch by the step below, because
+          # everything on main is published and a submitter's email address
+          # must not be. Pages serves .contacts/ in plain text.
           git add assets/img/events assets/data/gallery.yml assets/data/submissions.yml submit.html index.html
-          git add .contacts 2>/dev/null || true
           if [ "$removed" -gt 0 ]; then
             git commit -m "Remove $removed photo(s) from the gallery"
           else
             git commit -m "Publish $added submitted photo(s)"
           fi
           git push origin HEAD:main
+
+      - name: Publish the contact and removal logs to the contacts branch
+        run: |
+          set -euo pipefail
+          # The submitter names, email addresses and the record of what was
+          # removed and why. These cannot go on main: the site publishes every
+          # path on this branch, and a dot-directory is not a hiding place --
+          # .contacts/contacts.yml was served in plain text when it was
+          # committed there.
+          #
+          # Built with plumbing against a scratch index, so this never touches
+          # the working tree or the commit that is about to be pushed to main.
+          # The branch holds only these files: it is a record, not a copy of the
+          # site, and nothing deploys it.
+          #
+          # The file list comes from the directory, not from `git status`:
+          # .contacts/ is gitignored here on purpose, and git does not report
+          # ignored files even with --untracked-files=all, so asking git would
+          # find nothing and quietly publish an empty commit.
+          files=$(find .contacts -type f -name '*.yml' 2>/dev/null | sort || true)
+          if [ -z "$files" ]; then
+            echo "no contact or removal log to publish"
+            exit 0
+          fi
+          count=$(echo "$files" | wc -l)
+          export GIT_INDEX_FILE="$(mktemp)"
+          git read-tree --empty
+          while read -r path; do
+            [ -n "$path" ] || continue
+            blob=$(git hash-object -w -- "$path")
+            git update-index --add --cacheinfo "100644,$blob,$(basename "$path")"
+          done <<< "$files"
+          tree=$(git write-tree)
+          # The tip of the log branch has to come from ls-remote, not from
+          # origin/contacts: this job checks out main and nothing else, so that
+          # remote-tracking ref does not exist. Reading it as missing would make
+          # every run start a fresh history and force-push over the last one.
+          parent=$(git ls-remote origin refs/heads/contacts | awk '{print $1}')
+          if [ -n "$parent" ]; then
+            # Enough to name as a parent; the object itself lives on the remote.
+            git fetch --quiet --depth=1 origin "$parent" 2>/dev/null || true
+            commit=$(git commit-tree "$tree" -p "$parent" -m "Record $count gallery log file(s)")
+          else
+            commit=$(git commit-tree "$tree" -m "Start the contact log")
+          fi
+          git push origin "$commit:refs/heads/contacts"
+          echo "published $count gallery log file(s) to the contacts branch"
 
       - name: Clear the processed photos from the submissions branch
         if: steps.incoming.outputs.waiting != '0' || steps.incoming.outputs.takedowns != '0'
