@@ -143,6 +143,31 @@ jobs:
           echo "takedowns=$takedowns" >> "$GITHUB_OUTPUT"
           echo "$waiting photo(s) waiting, $takedowns removal request(s)"
 
+      - name: Restore the contact and removal logs
+        run: |
+          set -euo pipefail
+          # The tools append to these files, but this job is a fresh checkout
+          # and .contacts/ is gitignored on main, so the working copy starts
+          # empty every run. Without restoring it first, each run would rebuild
+          # the log from its own records alone and the branch would end up
+          # holding only the most recent submission -- everyone else's name and
+          # address quietly dropped. This is what makes the log cumulative.
+          tip=$(git ls-remote origin refs/heads/contacts | awk '{print $1}')
+          if [ -z "$tip" ]; then
+            echo "no contacts branch yet; starting a fresh log"
+            exit 0
+          fi
+          git fetch --quiet --depth=1 origin "$tip"
+          mkdir -p .contacts
+          restored=0
+          for name in contacts.yml removals.yml; do
+            if git cat-file -e "$tip:$name" 2>/dev/null; then
+              git show "$tip:$name" > ".contacts/$name"
+              restored=$((restored + 1))
+            fi
+          done
+          echo "restored $restored log file(s) from the contacts branch"
+
       - name: Publish them into the gallery
         if: steps.incoming.outputs.waiting != '0'
         run: python3 tools/publish_submissions.py --incoming /tmp/incoming/submissions
