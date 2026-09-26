@@ -185,6 +185,131 @@ function toBase64(buffer) {
   return btoa(binary);
 }
 
+/* POST /moderate
+ *
+ * Unpublishes a photo, the way /upload publishes one, and with the same
+ * posture: no password, no secret, no authentication of any kind. The upload
+ * endpoint is equally open, and the site has decided that is acceptable, so
+ * asking a deletion to be stricter than an upload would be inconsistent. The
+ * page's password box is a speed bump against mis-clicks and nothing more.
+ *
+ * The one thing this does check is the shape of the name, and that is not
+ * authentication either -- it is path safety. The value below is used to
+ * build a path on the submissions branch, so anything carrying a slash or a
+ * dot-segment is refused before it gets that far. There is no token in these
+ * pages; the guard is the filename, not the caller.
+ *
+ * It also does not delete anything. It writes a request to the queue, and
+ * tools/publish_submissions.py does the removal with the repository's own
+ * tooling, behind `gallery.py check`. That keeps one implementation of what a
+ * removal means, and keeps this Worker from needing to understand manifests or
+ * the generated markup. */
+export async function handleModerate(request, env, deps = {}) {
+  const doFetch = deps.fetch || fetch;
+  const origin = request.headers.get("origin") || "";
+  const allowed = env.ALLOWED_ORIGIN || "";
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: cors(origin) });
+  }
+  if (request.method !== "POST") {
+    return json({ ok: false, error: "Use POST." }, 405, origin);
+  }
+  if (allowed && origin !== allowed) {
+    return json({ ok: false, error: "Origin not allowed." }, 403, origin);
+  }
+  if (!env.GITHUB_TOKEN || !env.GITHUB_REPO) {
+    return json({ ok: false, error: "The relay is not configured yet." }, 500, origin);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ ok: false, error: "Malformed request." }, 400, origin);
+  }
+  if (!body || typeof body !== "object") {
+    return json({ ok: false, error: "Malformed request." }, 400, origin);
+  }
+
+  /* Path safety, not authentication. This value is interpolated into a path on
+     the submissions branch, so it has to be a bare gallery filename and
+     nothing else -- no slash, no dot-segment, no query, no traversal.
+     Lowercase only: every file the tool writes is lowercase, so accepting
+     22.JPG would only queue a request naming something that does not exist. */
+  const filename = clean(body.filename, 40);
+  if (!/^\d{2,}\.[a-z0-9]+$/.test(filename)) {
+    return json({ ok: false, error: "That is not a gallery photo." }, 400, origin);
+  }
+  const reason = clean(body.reason, 300);
+
+  const queue = env.SUBMISSIONS_BRANCH || "submissions";
+  const id = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
+
+  try {
+    await ensureBranch(
+      {
+        repo: env.GITHUB_REPO,
+        token: env.GITHUB_TOKEN,
+        branch: queue,
+        from: env.BASE_BRANCH || "main",
+      },
+      doFetch
+    );
+
+    await commitFile(
+      {
+        repo: env.GITHUB_REPO,
+        token: env.GITHUB_TOKEN,
+        branch: queue,
+        path: `moderate/${id}.json`,
+        base64: toBase64(
+          new TextEncoder().encode(
+            JSON.stringify(
+              { id, requested: new Date().toISOString(), filename, reason },
+              null,
+              2
+            )
+          )
+        ),
+        message: `Removal request ${id}: ${filename}`,
+      },
+      doFetch
+    );
+  } catch (error) {
+    return json(
+      { ok: false, error: `We could not queue the removal: ${error.message}` },
+      502,
+      origin
+    );
+  }
+
+  /* Queued and safe, so this cannot change the answer: reporting a stored
+     request as failed because a convenience call afterwards bounced would be a
+     lie the visitor would act on. The schedule is the floor if this is
+     refused. */
+  try {
+    await requestPublish(
+      { repo: env.GITHUB_REPO, token: env.GITHUB_TOKEN, id, branch: queue },
+      doFetch
+    );
+  } catch {
+    // The schedule in the publishing workflow picks it up instead.
+  }
+
+  return json(
+    {
+      ok: true,
+      id,
+      message:
+        "That photo is off the site. It takes about a minute, and the request is " +
+        "recorded in the repository's removal log.",
+    },
+    200,
+    origin
+  );
+}
+
 export async function handleUpload(request, env, deps = {}) {
   const doFetch = deps.fetch || fetch;
   const origin = request.headers.get("origin") || "";

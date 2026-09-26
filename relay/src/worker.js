@@ -1,7 +1,7 @@
 /* Cloudflare Worker entry point. All the thinking lives in handler.js so it
    can be tested without this runtime; this file only routes. */
 
-import { handleUpload } from "./handler.js";
+import { handleUpload, handleModerate } from "./handler.js";
 
 export default {
   async fetch(request, env) {
@@ -9,6 +9,10 @@ export default {
 
     if (pathname === "/" || pathname === "/upload") {
       return handleUpload(request, env);
+    }
+
+    if (pathname === "/moderate") {
+      return handleModerate(request, env);
     }
 
     if (pathname === "/health") {

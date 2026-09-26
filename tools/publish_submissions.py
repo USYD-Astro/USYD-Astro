@@ -41,6 +41,25 @@ import gallery  # noqa: E402  (needs the path above)
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 
 
+def read_removals(folder: pathlib.Path) -> list[dict]:
+    """The removal requests the relay has queued, if any.
+
+    Separate from the uploads on purpose: a takedown must never be blocked by,
+    or bundled with, a half-finished publish of a new submission.
+    """
+    if not folder.is_dir():
+        return []
+    requests = []
+    for path in sorted(folder.glob("*.json")):
+        try:
+            data = json.loads(path.read_text())
+        except (ValueError, OSError):
+            continue
+        if isinstance(data, dict) and data.get("filename"):
+            requests.append(data)
+    return requests
+
+
 def read_meta(folder: pathlib.Path) -> dict:
     path = folder / "submission.json"
     if not path.exists():
@@ -67,8 +86,52 @@ def pending(incoming: pathlib.Path) -> list[pathlib.Path]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--incoming", default="/tmp/incoming/submissions")
+    parser.add_argument(
+        "--removals",
+        default="/tmp/incoming/moderate",
+        help="directory of queued removal requests, from the relay",
+    )
     parser.add_argument("--alt", default="Photo sent in by a SUAS member")
+    parser.add_argument(
+        "--removals-only",
+        action="store_true",
+        help="apply queued removals and ignore pending uploads",
+    )
     args = parser.parse_args()
+
+    removed = 0
+    for request in read_removals(pathlib.Path(args.removals)):
+        filename = str(request.get("filename") or "")
+        reason = str(request.get("reason") or "").strip()
+        # Re-validated here rather than trusted from the queue. The relay
+        # already refuses anything but a bare gallery filename, but this is the
+        # step that touches the working tree, and the queue is a branch a token
+        # can write to. Not pinned to .jpg: the curated gallery contains
+        # 03.png, which has to be removable too.
+        if not re.fullmatch(r"\d{2,}\.[a-z0-9]+", filename):
+            print(f"  ignoring removal request with an unusable name: {filename!r}")
+            continue
+        if not reason:
+            reason = "removed from the gallery from the photo viewer"
+        try:
+            result = gallery.remove_photos(filename, reason=reason)
+        except SystemExit:
+            result = None
+        if not result:
+            # Already gone: removed by hand, or by an earlier run. The request
+            # has been satisfied either way, so this is not an error.
+            print(f"  removal of {filename}: not in any manifest, nothing to do")
+            continue
+        removed += 1
+        print(
+            f"  removed {result['file']} from {result['manifest']}"
+            f" ({len(result['files'])} file(s) deleted)"
+        )
+
+    if removed:
+        gallery.cmd_sync(argparse.Namespace(force=False))
+
+    folders = [] if args.removals_only else pending(pathlib.Path(args.incoming))
 
     folders = [] if args.removals_only else pending(pathlib.Path(args.incoming))
     if not folders:
@@ -113,6 +176,8 @@ def main() -> int:
     print(f"\n  published {published} submission(s) into the submit page gallery")
     if contacts:
         print(f"  recorded {contacts} contact(s) in .contacts/contacts.yml (goes to the contacts branch)")
+    if removed:
+        print(f"  removed {removed} photo(s) from the gallery")
     return 0
 
 
