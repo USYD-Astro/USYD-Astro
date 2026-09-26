@@ -8,3 +8,9 @@
 #
 # Appended by tools/gallery.py and tools/publish_submissions.py. Safe to edit by
 # hand; the next append rewrites the file from this list.
+- date: '2026-09-26'
+  name: Murray Jones
+  credit: Murray Jones
+  email: murray@usydcanoeclub.org
+  files:
+  - mui7omf9-766e7caf/01.png
