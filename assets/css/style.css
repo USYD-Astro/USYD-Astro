@@ -732,6 +732,14 @@ p {
   margin-left: 10px;
 }
 
+/* Without this, the display above outranks the browser's own [hidden] rule and
+   the fields stay on screen whatever the attribute says -- which left the
+   Admin button toggling aria-expanded with no visible effect at all. Same
+   reason .rail__nav needs the same line. */
+.lightbox__admin-fields[hidden] {
+  display: none;
+}
+
 .lightbox__admin-label {
   font-size: 0.72rem;
   color: rgba(255, 255, 255, 0.4);
