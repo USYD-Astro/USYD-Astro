@@ -43,21 +43,35 @@ jobs:
     steps:
       # Decided before the checkout, so an issue from someone without write
       # access never gets as far as cloning the repository.
+      #
+      # This asks the API what permission the account actually has, rather
+      # than reading github.event.issue.author_association. That field looked
+      # like the cheaper option and is not: it reported CONTRIBUTOR for an
+      # account with admin on this repository, which would have locked the
+      # committee out of the very feature this exists for. author_association
+      # is a legacy heuristic about how someone found the repo; permission is
+      # the question actually being asked here.
       - name: Check the requester can write to this repository
         id: asker
         env:
           GH_TOKEN: ${{ github.token }}
+          LOGIN: ${{ github.event.issue.user.login }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          association="${{ github.event.issue.author_association }}"
-          echo "association=$association" >> "$GITHUB_OUTPUT"
-          case "$association" in
-            OWNER|MEMBER|COLLABORATOR)
-              echo "author_association $association: trusted, proceeding"
-              echo "trusted=true" >> "$GITHUB_OUTPUT" ;;
+          # A user who does not exist answers 404 rather than a permission
+          # level, so a failure here is "not someone we can trust" and not a
+          # reason to fail the run.
+          perm=$(gh api "repos/$REPO/collaborators/$LOGIN/permission" \
+            --jq '.permission' 2>/dev/null || echo "none")
+          echo "permission=$perm" >> "$GITHUB_OUTPUT"
+          case "$perm" in
+            admin|write)
+              echo "trusted=true" >> "$GITHUB_OUTPUT"
+              echo "$LOGIN has $perm on $REPO: proceeding" ;;
             *)
-              echo "::warning::Ignoring a removal filed by someone with association '$association'. Only OWNER, MEMBER or COLLABORATOR may remove a photo."
-              echo "trusted=false" >> "$GITHUB_OUTPUT" ;;
+              echo "trusted=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::Ignoring a removal filed by $LOGIN, who has '$perm' on this repository. Write access is required to remove a photo." ;;
           esac
 
       - name: Read the photo out of the request
