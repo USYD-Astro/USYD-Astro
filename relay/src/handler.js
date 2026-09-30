@@ -356,3 +356,126 @@ export async function handleUpload(request, env, deps = {}) {
     origin
   );
 }
+
+/* POST /moderate
+ *
+ * Takes a photo out of the gallery, the way /upload puts one in, and over the
+ * same credential. The page's password box gates the click; nothing here reads
+ * it, and nothing could. This Worker holds one shared secret and there is no
+ * second one to compare against, so a password checked in the browser would be
+ * a string every visitor can read in their own devtools. The box is there to
+ * stop a mis-click in a public gallery, which is the job it is doing.
+ *
+ * Say plainly what that leaves: the same posture as /upload, which is equally
+ * open to anyone. A deletion that demanded a credential while an upload did
+ * not would be inconsistent, and holding a real one would mean a real secret to
+ * hand out, store and rotate for a task this size.
+ *
+ * The one thing checked here is the shape of the filename, and that is path
+ * safety rather than authentication. The name is interpolated into a path on
+ * the queue branch, so it has to be a bare gallery filename -- no slashes, no
+ * dot-segments, nothing that could climb out of the directory it is written to.
+ *
+ * The Worker still deletes nothing itself. It writes a request and the
+ * publishing Action performs the removal with the repository's own tooling,
+ * which keeps one implementation of "remove a photo" rather than two. */
+export async function handleModerate(request, env, deps = {}) {
+  const doFetch = deps.fetch || fetch;
+  const origin = request.headers.get("origin") || "";
+  const allowed = env.ALLOWED_ORIGIN || "";
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: cors(origin) });
+  }
+  if (request.method !== "POST") {
+    return json({ ok: false, error: "Use POST." }, 405, origin);
+  }
+  if (allowed && origin !== allowed) {
+    return json({ ok: false, error: "Origin not allowed." }, 403, origin);
+  }
+  if (!env.GITHUB_TOKEN || !env.GITHUB_REPO) {
+    return json({ ok: false, error: "The relay is not configured yet." }, 500, origin);
+  }
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ ok: false, error: "Could not read the request." }, 400, origin);
+  }
+  if (!payload || typeof payload !== "object") {
+    return json({ ok: false, error: "Could not read the request." }, 400, origin);
+  }
+
+  const filename = clean(payload.filename, 120);
+  // A bare gallery filename, and nothing else. This is the boundary that keeps
+  // the value below from becoming a path, so it is deliberately strict rather
+  // than merely sanitising the obvious cases.
+  if (!/^\d{2,}\.[a-z0-9]+$/i.test(filename)) {
+    return json(
+      { ok: false, error: "That is not a gallery filename." },
+      400,
+      origin
+    );
+  }
+
+  const reason = clean(payload.reason, 400) || "removed from the photo viewer";
+  const branch = env.SUBMISSIONS_BRANCH || "submissions";
+  const id = `rm-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
+  const record = {
+    filename,
+    reason,
+    requested: new Date().toISOString(),
+  };
+
+  try {
+    await ensureBranch(
+      { repo: env.GITHUB_REPO, token: env.GITHUB_TOKEN, branch, from: env.BASE_BRANCH || "main" },
+      doFetch
+    );
+    await commitFile(
+      {
+        repo: env.GITHUB_REPO,
+        token: env.GITHUB_TOKEN,
+        branch,
+        path: `moderate/${id}.json`,
+        base64: toBase64(new TextEncoder().encode(JSON.stringify(record))),
+        message: `Queue removal of ${filename}`,
+      },
+      doFetch
+    );
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+        error:
+          error instanceof Error
+            ? `The removal could not be queued (${error.message}).`
+            : "The removal could not be queued.",
+      },
+      502,
+      origin
+    );
+  }
+
+  // Committed and safe, so a refused dispatch only costs the wait. Same shape
+  // as the upload path, and the schedule behind it is what guarantees it.
+  try {
+    await requestPublish(
+      { repo: env.GITHUB_REPO, token: env.GITHUB_TOKEN, id, branch },
+      doFetch
+    );
+  } catch {
+    // The schedule in the publishing workflow picks this up instead.
+  }
+
+  return json(
+    {
+      ok: true,
+      id,
+      message: `${filename} is on its way off the site and should be gone within a minute.`,
+    },
+    200,
+    origin
+  );
+}

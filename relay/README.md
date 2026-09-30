@@ -66,53 +66,36 @@ It also refuses to leave half a job done, which is the only real danger here:
 a takedown that removed the markup but left the file would keep serving the
 photo from its old URL, so `check` fails on any such drift.
 
-**This relay has nothing to do with removals, and that is deliberate.** The
-page is static, so it cannot write to the repository, and the only credential
-that can lives here as `GITHUB_TOKEN`. An endpoint that deleted files would
-turn this Worker into a write primitive for the repository, reachable from
-anywhere on the internet -- its only defence today is an `Origin` header,
-which any non-browser client can set to anything. So there is no delete
-endpoint and no admin password. An earlier version had one; it was removed
-because a password guarding it was a real credential to hand out, and because
-the cost of deploying and maintaining it was not worth a task this small.
+**The relay handles removals too, over the same credential.** `POST /moderate`
+takes a photo out the way `/upload` puts one in: it writes a takedown request
+to the `submissions` branch and dispatches the publishing workflow, which then
+runs `tools/publish_submissions.py` to apply it with the repository's own
+`gallery.py`. The Worker still deletes nothing itself, which keeps one
+implementation of "remove a photo" rather than two. The photo is off the site
+on the next Pages build, usually within a minute.
 
-The photo viewer still has a **Remove from gallery** button, behind a quiet
-`Admin` link. It does not delete anything and needs no password: it opens a
-prefilled GitHub issue naming the photo and the reason given, which is where
-the request and the account that made it are recorded. GitHub is already the
-thing that decides who counts, so there is nothing to set up.
+The endpoint's only real check is the shape of the filename, and that is path
+safety rather than authentication. The name is interpolated into a path on the
+queue branch, so it must be a bare gallery filename: no slashes, no
+dot-segments, nothing that could climb out of the directory it is written to.
 
-### Removals run themselves
+**The admin password box is decoration, and please do not describe it as
+protection.** It gates the click and nothing else. It is not sent, and there is
+no secret here to check it against, because this is a static page -- a password
+read in the browser would be a string in every visitor's devtools. What it does
+do is stop a photo being deleted because someone clicked twice in a public
+gallery, which is the job it is doing.
 
-`.github/workflows/remove-photo.yml` picks that issue up and runs the command
-above, so nobody has to be at a terminal for a removal to happen. It is the
-twin of `publish-submission.yml` rather than a new mechanism: the same
-`GITHUB_TOKEN` the publishing workflow already has, the same contacts-branch
-step, the same `gallery.py` under it. The photo is off the site on the next
-Pages build, usually within a minute.
+Say what that leaves: `/moderate` has the same posture as `/upload`, which is
+also open to anyone who finds it. A deletion demanding a credential while an
+upload does not would be inconsistent, and holding a real one would mean a real
+secret to hand out, store and rotate for a task this size. The relay's only
+defence on both routes is an `Origin` header, which any non-browser client can
+set to anything -- that is a limit worth knowing, not a boundary to rely on.
 
-That also settles the question the button's existence raises. The site can add
-a photo only because this relay holds a credential; a browser cannot hold one,
-so something with a credential has to be on the receiving end of a removal.
-The relay cannot be that something, for the reasons above -- but a GitHub
-workflow can, and it needs no account, no dashboard visit and no secret to
-hand out or rotate.
-
-Filing the issue is the authentication. Anyone can open an issue, including
-anonymously, so the workflow does not trust the request for arriving: it asks
-the collaborators API what permission the account actually has and requires
-`admin` or `write`. It is worth trusting that rather than
-`github.event.issue.author_association`, which reported `CONTRIBUTOR` for an
-account with admin on this repository.
-
-Anything the workflow cannot act on gets a reply rather than silence: an issue
-with no filename in it is answered with the format the button would have
-produced, and a request from an account without write access is refused with a
-warning on the run.
-
-Removals stay available by hand too, and the two do not conflict -- the
-command is the fallback if Actions is down, and `gallery.py check` catches it
-if they ever disagree.
+Removals also stay available by hand with the command above, which is the
+fallback if the Worker is unreachable, and `gallery.py check` catches it if the
+two ever disagree.
 
 ### What a removal does and does not do
 

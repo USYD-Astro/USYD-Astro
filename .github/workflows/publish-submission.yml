@@ -97,6 +97,7 @@ jobs:
             # step never got as far as creating. That is the same class of
             # empty-queue failure the block below was written to avoid.
             echo "waiting=0" >> "$GITHUB_OUTPUT"
+            echo "takedowns=0" >> "$GITHUB_OUTPUT"
             echo "no queue branch yet"
             exit 0
           fi
@@ -111,11 +112,20 @@ jobs:
           if git cat-file -e origin/submissions:submissions 2>/dev/null; then
             git archive origin/submissions submissions | tar -x -C /tmp/incoming
           fi
+          # Removal requests queue in their own directory, so a takedown is
+          # never blocked behind a half-finished publish of a new submission.
+          if git cat-file -e origin/submissions:moderate 2>/dev/null; then
+            git archive origin/submissions moderate | tar -x -C /tmp/incoming
+          fi
           images() {
             [ -d submissions ] || return 0
             find submissions -mindepth 2 -type f \
               \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \
                  -o -iname '*.webp'                 -o -iname '*.heic' -o -iname '*.heif' \)
+          }
+          removals() {
+            [ -d moderate ] || return 0
+            find moderate -type f -name '*.json'
           }
           cd /tmp/incoming
           # The exact paths this run is about to publish. The clear step below
@@ -123,9 +133,17 @@ jobs:
           # job is running stays queued for the next run instead of being
           # thrown away unpublished.
           images > /tmp/processed.txt
+          # Same rule for takedowns, and it matters more here: a removal that
+          # was applied but not cleared would be applied again on the next run.
+          # Applying one twice is harmless, so the failure mode is a repeated
+          # no-op rather than a lost request -- but it is still cleared, and
+          # only once the run has actually done it.
+          removals > /tmp/removals.txt
           waiting=$(wc -l < /tmp/processed.txt)
+          takedowns=$(wc -l < /tmp/removals.txt)
           echo "waiting=$waiting" >> "$GITHUB_OUTPUT"
-          echo "$waiting photo(s) waiting"
+          echo "takedowns=$takedowns" >> "$GITHUB_OUTPUT"
+          echo "$waiting photo(s) waiting, $takedowns removal request(s)"
 
       - name: Restore the contact and removal logs
         run: |
@@ -136,11 +154,10 @@ jobs:
           # the log from its own records alone and the branch would end up
           # holding only the most recent submission -- everyone else's name and
           # address quietly dropped. This is what makes the log cumulative.
-          tip=$(git ls-remote origin refs/heads/contacts | awk '{print $1}')
-          if [ -z "$tip" ]; then
-            echo "no contacts branch yet; starting a fresh log"
-            exit 0
-          fi
+          tip=$(git ls-remote origin refs/heads/contacts | awk '{print $1}')            if [ -z "$tip" ]; then
+              echo "no contacts branch yet; starting a fresh log"
+              exit 0
+            fi
           git fetch --quiet --depth=1 origin "$tip"
           mkdir -p .contacts
           restored=0
@@ -152,16 +169,19 @@ jobs:
           done
           echo "restored $restored log file(s) from the contacts branch"
 
-      - name: Publish them into the gallery
-        if: steps.incoming.outputs.waiting != '0'
-        run: python3 tools/publish_submissions.py --incoming /tmp/incoming/submissions
+      - name: Publish them into the gallery, and apply any takedowns
+        if: steps.incoming.outputs.waiting != '0' || steps.incoming.outputs.takedowns != '0'
+        run: |
+          python3 tools/publish_submissions.py \
+            --incoming /tmp/incoming/submissions \
+            --removals /tmp/incoming/moderate
 
       - name: Verify the gallery is consistent
-        if: steps.incoming.outputs.waiting != '0'
+        if: steps.incoming.outputs.waiting != '0' || steps.incoming.outputs.takedowns != '0'
         run: python3 tools/gallery.py check
 
       - name: Commit the published gallery
-        if: steps.incoming.outputs.waiting != '0'
+        if: steps.incoming.outputs.waiting != '0' || steps.incoming.outputs.takedowns != '0'
         run: |
           set -euo pipefail
           git config user.name "SUAS photo relay"
@@ -242,7 +262,7 @@ jobs:
           echo "published $count gallery log file(s) to the contacts branch"
 
       - name: Clear the processed photos from the submissions branch
-        if: steps.incoming.outputs.waiting != '0'
+        if: steps.incoming.outputs.waiting != '0' || steps.incoming.outputs.takedowns != '0'
         run: |
           set -euo pipefail
           git config user.name "SUAS photo relay"
@@ -262,11 +282,20 @@ jobs:
               # published tree.
               git rm -q -f --cached --ignore-unmatch -- "$path"
             done < /tmp/processed.txt
+            # Removal requests go only after the run has actually applied them,
+            # which is what happened above. The list file may not exist at all
+            # if the collect step found no queue branch, so it is touched
+            # rather than assumed.
+            touch /tmp/removals.txt
+            while read -r path; do
+              rm -f -- "$path"
+              git rm -q -f --cached --ignore-unmatch -- "$path"
+            done < /tmp/removals.txt
             if [ -z "$(git status --porcelain)" ]; then
               echo "nothing to clear"
               exit 0
             fi
-            git commit --quiet -m "Clear processed photo submissions"
+            git commit --quiet -m "Clear processed photo submissions and takedowns"
             if git push --quiet origin HEAD:submissions; then
               echo "cleared the published photos on attempt $attempt"
               exit 0

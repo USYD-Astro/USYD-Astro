@@ -59,6 +59,62 @@ def images_in(folder: pathlib.Path) -> list[pathlib.Path]:
     )
 
 
+def removals_in(folder: pathlib.Path) -> list[pathlib.Path]:
+    """The queued takedown requests, if there are any.
+
+    Removal requests queue in their own directory on the same branch, so one
+    is never blocked behind a half-finished publish of a new submission, and
+    they are drained by the same run.
+    """
+    if not folder.is_dir():
+        return []
+    return sorted(folder.glob("*.json"))
+
+
+def apply_removals(folder: pathlib.Path) -> tuple[int, list[str]]:
+    """Take every queued photo out of the gallery. Returns (count, errors).
+
+    A request naming a photo no manifest lists is a real answer, not a
+    failure: the photo is already gone, most likely removed by hand or by an
+    earlier run. It is reported and the run carries on, because one stale
+    request must not wedge the queue behind it.
+    """
+    removed = 0
+    errors: list[str] = []
+    for path in removals_in(folder):
+        try:
+            payload = json.loads(path.read_text())
+        except (ValueError, OSError) as error:
+            errors.append(f"{path.name}: unreadable ({error})")
+            continue
+
+        filename = str(payload.get("filename") or "").strip()
+        if not filename:
+            errors.append(f"{path.name}: no filename in it")
+            continue
+
+        reason = str(payload.get("reason") or "").strip()
+        result = gallery.remove_photos(
+            filename,
+            reason=reason or "removed from the photo viewer",
+        )
+        if result is None:
+            print(f"  {filename} is not in any manifest; nothing to remove")
+            continue
+        removed += 1
+        print(f"  removed {result['file']} from {result['manifest']}")
+
+    if removed:
+        # Re-derive the generated markup. remove_photos drops the manifest
+        # entry and deletes the bytes, but the rail is a generated block
+        # between markers and nothing rewrites it until sync runs. Skipping
+        # this is not a cosmetic drift: the photo would be gone from disk and
+        # still listed on the page, and gallery.py check would fail the next
+        # push. `gallery.py remove` does the same thing from the CLI.
+        gallery.cmd_sync(argparse.Namespace(force=False))
+    return removed, errors
+
+
 def pending(incoming: pathlib.Path) -> list[pathlib.Path]:
     if not incoming.is_dir():
         return []
@@ -68,8 +124,21 @@ def pending(incoming: pathlib.Path) -> list[pathlib.Path]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--incoming", default="/tmp/incoming/submissions")
+    parser.add_argument("--removals", default="/tmp/incoming/moderate")
     parser.add_argument("--alt", default="Photo sent in by a SUAS member")
+    parser.add_argument(
+        "--removals-only",
+        action="store_true",
+        help="drain the takedown queue and do not publish new submissions",
+    )
     args = parser.parse_args()
+
+    # Removals are drained first and unconditionally. They are small, they are
+    # what somebody is waiting on, and doing them before a publish means a
+    # publish that fails part way cannot leave a takedown sitting in the queue.
+    removed, errors = apply_removals(pathlib.Path(args.removals))
+    for problem in errors:
+        print(f"  WARN  {problem}")
 
     folders = [] if args.removals_only else pending(pathlib.Path(args.incoming))
     if not folders:
@@ -111,7 +180,7 @@ def main() -> int:
         if str(meta.get("email") or "").strip():
             contacts += 1
 
-    print(f"\n  published {published} submission(s) into the submit page gallery")
+    print(f"\n  published {published} submission(s) into the competition rail")
     if contacts:
         print(f"  recorded {contacts} contact(s) in .contacts/contacts.yml (goes to the contacts branch)")
     return 0

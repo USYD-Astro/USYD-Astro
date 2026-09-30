@@ -144,23 +144,26 @@
   }
 
   /* ---- removing a photo ------------------------------------------------- */
-  /* The button a committee member uses to take a photo out of the gallery.
+  /* The button a committee member uses to take a photo out of the gallery. It
+     posts to the relay, the same endpoint the upload form uses and over the
+     same credential, and the photo is off the site on the next Pages build.
 
-     It does not delete anything itself, and it needs no password to do its
-     job. A static page cannot write to the repository -- the only credential
-     for that lives in the upload relay, as a Cloudflare Worker secret -- so
-     any password checked here would be decoration. Instead the button files
-     the request on GitHub, where the account you are already signed in to
-     decides whether it counts: only someone with write access can act on it,
-     and the issue itself is the record of who asked and why.
+     The password box below is a speed bump, and nothing checks it. It is not
+     sent and there is no secret on the other end to check it against, because
+     this is a static page: a password read here would be a string in every
+     visitor's devtools, so treating it as a guard would be a lie. What it
+     actually does is stop a photo being deleted because someone clicked twice
+     in a public gallery.
 
-     The removal is then one command:
-         python3 tools/gallery.py remove NN.jpg --reason "..."
-
-     HIDING THIS BUTTON IS NOT THE SECURITY EITHER. It is kept off ordinary
-     visitors' screens because it is not for them, not because anything
-     depends on them not finding it. */
-  var REPO = "USYD-Astro/USYD-Astro";
+     HIDING THE BUTTON IS NOT SECURITY EITHER. It is kept quiet because it is
+     not for visitors, not because anything depends on them not finding it. */
+  var MODERATE = (function () {
+    /* On <body> of every page: the remove control appears in the lightbox
+       wherever a photo is opened, and the upload form that carried this
+       endpoint before is not on all of them. */
+    var host = document.querySelector("[data-moderate-endpoint]");
+    return host ? host.dataset.moderateEndpoint : "";
+  })();
 
   function removeControl(thumb) {
     var wrap = document.createElement("p");
@@ -192,36 +195,99 @@
     button.textContent = "Remove from gallery";
     button.hidden = true;
 
+    var fields = document.createElement("span");
+    fields.className = "lightbox__admin-fields";
+    fields.hidden = true;
+
+    var label = document.createElement("label");
+    label.className = "lightbox__admin-label";
+    label.textContent = "Password";
+    var input = document.createElement("input");
+    input.type = "password";
+    input.className = "lightbox__admin-input";
+    input.autocomplete = "off";
+    /* Say so on the control, so nobody mistakes it for a real guard. */
+    input.title = "Not checked. It only stops accidental clicks.";
+    label.appendChild(input);
+    fields.appendChild(label);
+
     reveal.addEventListener("click", function () {
-      button.hidden = !button.hidden;
-      reveal.setAttribute("aria-expanded", button.hidden ? "false" : "true");
-      if (!button.hidden) {
-        button.focus();
+      fields.hidden = !fields.hidden;
+      reveal.setAttribute("aria-expanded", fields.hidden ? "false" : "true");
+      if (!fields.hidden) {
+        input.focus();
       }
     });
 
     button.addEventListener("click", function () {
+      if (button.disabled) {
+        return;
+      }
+      /* Empty means nobody typed anything, which is the mis-click this box
+         exists to catch. It is not a check -- see the note above. */
+      if (!input.value) {
+        input.focus();
+        return;
+      }
+      if (!MODERATE) {
+        window.alert("Removal is not configured on this site.");
+        return;
+      }
       var reason = window.prompt(
-        "Why is this photo being removed? This goes into the request.",
+        "Why is this photo being removed? This is recorded in the repository.",
         ""
       );
       if (reason === null) {
         return;
       }
-      var body =
-        "Please remove this photo from the gallery.\n\n" +
-        "Photo: `" + name + "`\n" +
-        "Reason: " + (reason || "_(not given)_") + "\n\n" +
-        "_Filed from the photo viewer on the site._";
-      var url =
-        "https://github.com/" + REPO + "/issues/new?title=" +
-        encodeURIComponent("Remove " + name + " from the gallery") +
-        "&body=" + encodeURIComponent(body);
-      window.open(url, "_blank", "noopener");
+      button.disabled = true;
+      button.textContent = "…";
+      fetch(MODERATE, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        /* The password is deliberately absent: nothing on the other end would
+           check it, so sending it would only put it in a request log. */
+        body: JSON.stringify({ filename: name, reason: reason }),
+      })
+        .then(function (response) {
+          return response.json().then(
+            function (data) {
+              return { ok: response.ok, data: data };
+            },
+            function () {
+              /* A non-JSON answer is a proxy or a Worker error page, not a
+                 verdict from the relay. */
+              return { ok: false, data: null };
+            }
+          );
+        })
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            /* The photo is off the site in about a minute, so this is the end
+               of the view rather than something to go back from. */
+            hide();
+            window.alert(
+              (result.data && result.data.message) ||
+                "That photo is on its way off the site."
+            );
+            return;
+          }
+          window.alert(
+            (result.data && result.data.error) || "The removal did not work."
+          );
+          button.disabled = false;
+          button.textContent = "Remove from gallery";
+        })
+        .catch(function () {
+          button.disabled = false;
+          button.textContent = "Remove from gallery";
+          window.alert("We could not reach the relay. Is the site online?");
+        });
     });
 
     wrap.appendChild(reveal);
-    wrap.appendChild(button);
+    wrap.appendChild(fields);
+    fields.appendChild(button);
     return wrap;
   }
 

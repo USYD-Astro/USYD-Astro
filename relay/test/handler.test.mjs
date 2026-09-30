@@ -301,3 +301,148 @@ test("a refused dispatch does not turn a stored submission into a failure", asyn
   assert.equal(response.status, 200);
   assert.equal((await body(response)).ok, true);
 });
+
+/* ---- the removal endpoint ---------------------------------------------- */
+
+import { handleModerate } from "../src/handler.js";
+
+function stubModerateRequest({
+  method = "POST",
+  origin = ORIGIN,
+  raw = '{"filename":"22.jpg","reason":"withdrawn"}',
+} = {}) {
+  const headers = new Headers();
+  if (origin !== null) headers.set("origin", origin);
+  return {
+    method,
+    headers,
+    json: async () => JSON.parse(raw),
+    formData: async () => {
+      throw new Error("should not be called");
+    },
+  };
+}
+
+/* The GitHub calls a removal makes: does the branch exist, does the file
+   exist, commit the request, and nudge the workflow. */
+function moderateFetchStub({ refStatus = 200, contentsStatus = 404 } = {}) {
+  const calls = [];
+  const stub = async (url, init = {}) => {
+    calls.push({ url: String(url), method: init.method || "GET" });
+    // The branch lookup is /git/ref/heads/ (singular ref); only the create
+    // call below uses the plural /git/refs.
+    if (String(url).includes("/git/ref/heads/")) {
+      return new Response(null, { status: refStatus });
+    }
+    if (String(url).endsWith("/git/refs")) {
+      return new Response(JSON.stringify({ ref: "ok" }), { status: 201 });
+    }
+    if (String(url).includes("/contents/")) {
+      if (!init.method) {
+        return new Response(null, { status: contentsStatus });
+      }
+      return new Response(
+        JSON.stringify({ content: { path: "moderate/rm-1.json" } }),
+        { status: 201 }
+      );
+    }
+    if (String(url).includes("/dispatches")) {
+      return new Response(null, { status: 204 });
+    }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  return { stub, calls };
+}
+
+test("removal: queues a takedown on the submissions branch", async () => {
+  const { stub, calls } = moderateFetchStub();
+  const response = await handleModerate(
+    stubModerateRequest(),
+    ENV,
+    { fetch: stub }
+  );
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+
+  // The request is the PUT under contents/moderate/, not the GET beside it.
+  const put = calls.find(
+    (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
+  );
+  assert.ok(put, "expected a commit under moderate/");
+  // The branch travels as ?ref= on the lookup and in the PUT body, not in the
+  // commit URL itself, so it is checked where it actually appears.
+  const lookup = calls.find((c) => c.url.includes("/contents/moderate/") && c.method === "GET");
+  assert.ok(lookup && lookup.url.includes("ref=submissions"), "queue branch");
+  assert.ok(calls.some((c) => c.url.includes("/git/ref/heads/submissions")));
+});
+
+test("removal: answers the preflight, so the browser will send it", async () => {
+  const { stub } = moderateFetchStub();
+  const response = await handleModerate(
+    stubModerateRequest({ method: "OPTIONS" }),
+    ENV,
+    { fetch: stub }
+  );
+  assert.equal(response.status, 204);
+  assert.equal(
+    response.headers.get("access-control-allow-origin"),
+    ORIGIN
+  );
+});
+
+test("removal: refuses an origin that is not ours", async () => {
+  const { stub, calls } = moderateFetchStub();
+  const response = await handleModerate(
+    stubModerateRequest({ origin: "https://evil.example" }),
+    ENV,
+    { fetch: stub }
+  );
+  assert.equal(response.status, 403);
+  assert.equal(calls.length, 0, "must not touch GitHub");
+});
+
+test("removal: refuses a filename that is not a bare gallery name", async () => {
+  for (const bad of [
+    "../../etc/passwd",
+    "sub/dir/22.jpg",
+    "22.jpg --force",
+    "notaphoto.txt",
+    "",
+  ]) {
+    const { stub, calls } = moderateFetchStub();
+    const response = await handleModerate(
+      stubModerateRequest({ raw: JSON.stringify({ filename: bad }) }),
+      ENV,
+      { fetch: stub }
+    );
+    assert.equal(response.status, 400, `expected 400 for ${JSON.stringify(bad)}`);
+    assert.equal(calls.length, 0, "must not touch GitHub");
+  }
+});
+
+test("removal: rejects a GET", async () => {
+  const { stub } = moderateFetchStub();
+  const response = await handleModerate(
+    stubModerateRequest({ method: "GET" }),
+    ENV,
+    { fetch: stub }
+  );
+  assert.equal(response.status, 405);
+});
+
+test("removal: unparseable body is a 400, not a crash", async () => {
+  const { stub } = moderateFetchStub();
+  const response = await handleModerate(
+    stubModerateRequest({ raw: "{" }),
+    ENV,
+    { fetch: stub }
+  );
+  assert.equal(response.status, 400);
+});
+
+test("removal: says so when the relay has no token", async () => {
+  const { stub } = moderateFetchStub();
+  const response = await handleModerate(stubModerateRequest(), {}, { fetch: stub });
+  assert.equal(response.status, 500);
+});
