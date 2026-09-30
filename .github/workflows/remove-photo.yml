@@ -74,6 +74,30 @@ jobs:
               echo "::warning::Ignoring a removal filed by $LOGIN, who has '$perm' on this repository. Write access is required to remove a photo." ;;
           esac
 
+      # Without this the run just goes green and stops, and the person who
+      # filed sees a successful tick beside their request while the photo stays
+      # on the site. The warning annotation above is on the run, which they
+      # have no reason to ever look at. Say it on the issue, where they are
+      # actually looking, and leave it open so it can be redone from an account
+      # that can write.
+      #
+      # This is deliberately not a failure. Nothing is broken and nobody should
+      # be paged; a request from a read-only account is a person using the
+      # wrong GitHub login, not an incident.
+      - name: Tell the requester it was not actioned
+        if: steps.asker.outputs.trusted == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          LOGIN: ${{ github.event.issue.user.login }}
+        run: |
+          set -euo pipefail
+          gh issue comment "${{ github.event.issue.number }}" --body "I have not removed anything.
+
+          This request was filed by \`$LOGIN\`, which has **${{ steps.asker.outputs.permission }}** on this repository, and a removal has to come from an account with write access. The photo is still on the site.
+
+          This usually means the Remove button was used in a browser signed in to a different GitHub account than the one you administer the repository with. Sign in as the account that has write access and file it again, or ask whoever does."
+
       - name: Read the photo out of the request
         id: request
         if: steps.asker.outputs.trusted == 'true'
