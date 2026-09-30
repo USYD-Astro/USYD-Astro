@@ -327,10 +327,21 @@ p {
 }
 
 /* A section that directly continues the one above it, rather than starting a
-   new topic. Two sections stacked normally put 56px of padding on each side of
-   the join, which reads as a deliberate break; this halves it to one. */
-.section--flush {
+   new topic. Two stacked sections carry 56px of padding on each side of the
+   join, which reads as a deliberate break; here the join is a line of prose
+   and nothing more.
+
+   The doubled class is deliberate. The narrow-window rules at the foot of
+   this file re-declare .section padding, and a single .section--flush loses to
+   them on source order -- which left this silently doing nothing on a phone. */
+.section.section--flush {
   padding-top: 0;
+}
+
+/* The other side of that same join, and the same reason for the doubled
+   class. */
+.section.section--intro {
+  padding-bottom: 18px;
 }
 
 /* The gallery band's own photo moved to the fixed page backdrop (see
@@ -481,15 +492,22 @@ p {
 
 /* ---------- submitted photo rail ----------------------------------------- */
 
-/* The submit page's own gallery, paged sideways, and the arrows that do the
-   paging. With no heading beside them the arrows are the only thing on this
-   line, so they sit on the right of it. */
+/* The gallery's own sentence, with the arrows that page it on the same line.
+   The sentence is the flexible half so a long line wraps under the arrows
+   rather than pushing them off the edge. */
 .rail-head {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
+  justify-content: space-between;
+  gap: 12px 16px;
   flex-wrap: wrap;
+}
+
+.rail-head .lede {
+  flex: 1 1 20rem;
+  width: auto;
+  min-width: 0;
+  margin-bottom: 0;
 }
 
 .rail {

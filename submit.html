@@ -41,7 +41,7 @@
 
 <main id="main">
 
-  <section class="section">
+  <section class="section section--intro">
     <div class="wrap">
       <div class="title-row">
         <h2>2026 Astrophotography Competition</h2>
@@ -64,15 +64,17 @@
   <section class="section section--flush" id="sent-in">
     <div class="wrap">
       <div class="rail-head">
+        <p class="lede">A gallery of photos sent in thus far as shown below. Click on a photo to see full size + more info.</p>
+
         <!-- The arrows are revealed by main.js only when the rail actually
              overflows; without JavaScript the rail is still swipeable and
-             scrollable, so nothing is lost. -->
+             scrollable, so nothing is lost. They share the line with the
+             sentence rather than sitting on a row of their own above it. -->
         <div class="rail__nav" id="rail-nav" hidden>
           <button type="button" id="rail-prev" aria-controls="rail" aria-label="Previous photos">&#8249;</button>
           <button type="button" id="rail-next" aria-controls="rail" aria-label="More photos">&#8250;</button>
         </div>
       </div>
-      <p class="lede">A gallery of photos sent in thus far as shown below. Click on a photo to see full size + more info.</p>
 
       <!-- Where the result of a successful upload is reported. The upload
            dialog closes on success so the submitter can see the photos they
