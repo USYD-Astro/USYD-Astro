@@ -1,0 +1,15 @@
+# Photos taken out of the gallery, and why.
+#
+# Written by tools/gallery.py remove, and committed to the `contacts`
+# branch, which GitHub Pages does not deploy. Never commit this to
+# main: everything on main is served.
+#
+# This is the record for a takedown asked for on request. It does not
+# mean the photo is unrecoverable -- the bytes stay in git history and
+# in web archives. See relay/README.md for the follow-up that needs.
+
+- date: '2026-09-30T05:48:00+00:00'
+  file: 21.jpg
+  credit: Murray
+  reason: end-to-end test of the removal workflow
+  removed_from: assets/data/submissions.yml
