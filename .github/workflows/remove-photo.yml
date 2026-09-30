@@ -1,0 +1,209 @@
+name: Remove a photo from the gallery
+
+# The site can add a photo to the gallery because the upload relay holds a
+# GITHUB_TOKEN and writes to the repository with it. A browser cannot hold
+# that token, so the same trick is not available for removal: the page has to
+# hand the request to something that can write.
+#
+# This is that something, and it is the twin of publish-submission.yml rather
+# than a new idea. The Remove button in the photo viewer opens a prefilled
+# issue naming the photo and the reason; this picks that issue up and runs the
+# same tools/gallery.py remove the committee would have run by hand. The photo
+# is off the site on the next Pages build, with no relay involved and no
+# credential to deploy, rotate or leak.
+#
+# Filing the issue is the authentication. An issue can be opened by anyone at
+# all, including anonymously, so the request is not trusted just because it
+# arrived -- it has to come from someone who can already write to this
+# repository. That check is the first step, and nothing runs without it.
+#
+# Note what this is NOT: it is not a public delete endpoint. Nothing here is
+# reachable without a GitHub account that already has write access, so the
+# unauthenticated write primitive the relay's /moderate route would have been
+# does not exist.
+
+on:
+  issues:
+    types: [opened]
+
+# One removal at a time. Two requests in the same second would both check out
+# main and the second push would fail on a non-fast-forward, which is the
+# correct outcome -- it should be redone, not forced.
+concurrency:
+  group: remove-a-photo
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    steps:
+      # Decided before the checkout, so an issue from someone without write
+      # access never gets as far as cloning the repository.
+      - name: Check the requester can write to this repository
+        id: asker
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          association="${{ github.event.issue.author_association }}"
+          echo "association=$association" >> "$GITHUB_OUTPUT"
+          case "$association" in
+            OWNER|MEMBER|COLLABORATOR)
+              echo "author_association $association: trusted, proceeding"
+              echo "trusted=true" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::warning::Ignoring a removal filed by someone with association '$association'. Only OWNER, MEMBER or COLLABORATOR may remove a photo."
+              echo "trusted=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Read the photo out of the request
+        id: request
+        if: steps.asker.outputs.trusted == 'true'
+        env:
+          TITLE: ${{ github.event.issue.title }}
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          set -euo pipefail
+          # The filename is interpolated into a path on the way to the
+          # manifest, so it is matched against a bare gallery filename and
+          # nothing else. No slashes, no dot-segments, no arguments.
+          name=$(printf '%s\n' "$BODY" \
+            | grep -oE 'Photo: *`[0-9]{2,}\.[A-Za-z0-9]+`' \
+            | head -1 \
+            | grep -oE '[0-9]{2,}\.[A-Za-z0-9]+' || true)
+          if [ -z "$name" ]; then
+            echo "::error::No photo filename found in the issue body."
+            echo "name=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          reason=$(printf '%s\n' "$BODY" \
+            | grep -m1 '^Reason:' \
+            | sed -e 's/^Reason:[[:space:]]*//' || true)
+          [ -n "$reason" ] || reason="filed from the photo viewer"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          echo "removing $name: $reason"
+
+      - uses: actions/checkout@v4
+        if: steps.request.outputs.name != ''
+
+      - uses: actions/setup-python@v5
+        if: steps.request.outputs.name != ''
+        with:
+          python-version: "3.12"
+
+      - name: Install the gallery tooling
+        if: steps.request.outputs.name != ''
+        run: pip install --quiet --disable-pip-version-check pillow pyyaml
+
+      - name: Take the photo out of the gallery
+        id: apply
+        if: steps.request.outputs.name != ''
+        env:
+          NAME: ${{ steps.request.outputs.name }}
+          REASON: ${{ steps.request.outputs.reason }}
+        run: |
+          set -euo pipefail
+          # remove_photos exits non-zero when no manifest lists the file, which
+          # is a real answer rather than a failure: the photo is already gone,
+          # most likely removed by hand or by an earlier run. Recorded as such
+          # so the issue gets a reply instead of hanging open.
+          if python3 tools/gallery.py remove "$NAME" --reason "$REASON"; then
+            echo "outcome=removed" >> "$GITHUB_OUTPUT"
+          else
+            echo "outcome=absent" >> "$GITHUB_OUTPUT"
+            echo "::warning::$NAME is not in any manifest; nothing to remove."
+          fi
+
+      - name: Check the gallery is consistent
+        if: steps.apply.outputs.outcome == 'removed'
+        run: python3 tools/gallery.py check
+
+      - name: Commit the removal to main
+        if: steps.apply.outputs.outcome == 'removed'
+        run: |
+          set -euo pipefail
+          git config user.name "SUAS photo relay"
+          git config user.email "usydastronomy@gmail.com"
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "nothing changed"
+            exit 0
+          fi
+          # The photo, its thumbnail, the manifest and the markup that
+          # references it. .contacts/ is deliberately NOT staged here: Pages
+          # serves every path on main, and it served .contacts/contacts.yml in
+          # plain text once. The log goes to its own branch below.
+          git add assets/img/events assets/data/gallery.yml \
+                  assets/data/submissions.yml submit.html index.html
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "nothing staged"
+            exit 0
+          fi
+          git commit -m "Remove a photo from the gallery at a committee member's request"
+          git push origin HEAD:main
+
+      - name: Publish the removal log to the contacts branch
+        if: steps.apply.outputs.outcome == 'removed'
+        run: |
+          set -euo pipefail
+          # Why it went and who asked. The same reasoning, and the same
+          # plumbing against a scratch index, as publish-submission.yml: this
+          # must not touch the working tree or the commit pushed above.
+          files=$(find .contacts -type f -name '*.yml' 2>/dev/null | sort || true)
+          if [ -z "$files" ]; then
+            echo "no removal log to publish"
+            exit 0
+          fi
+          count=$(echo "$files" | wc -l)
+          export GIT_INDEX_FILE="$(mktemp)"
+          git read-tree --empty
+          while read -r path; do
+            [ -n "$path" ] || continue
+            blob=$(git hash-object -w -- "$path")
+            git update-index --add --cacheinfo "100644,$blob,$(basename "$path")"
+          done <<< "$files"
+          tree=$(git write-tree)
+          parent=$(git ls-remote origin refs/heads/contacts | awk '{print $1}')
+          if [ -n "$parent" ]; then
+            git fetch --quiet --depth=1 origin "$parent" 2>/dev/null || true
+            commit=$(git commit-tree "$tree" -p "$parent" -m "Record $count gallery log file(s)")
+          else
+            commit=$(git commit-tree "$tree" -m "Start the contact log")
+          fi
+          git push origin "$commit:refs/heads/contacts"
+          echo "published $count gallery log file(s) to the contacts branch"
+
+      - name: Report back on the issue
+        if: steps.request.outputs.name != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.apply.outputs.outcome }}
+          NAME: ${{ steps.request.outputs.name }}
+          REASON: ${{ steps.request.outputs.reason }}
+        run: |
+          set -euo pipefail
+          case "$OUTCOME" in
+            removed)
+              note="\`$NAME\` has been removed from the gallery. It is off the site on the next Pages build, usually within a minute, and the reason is recorded in the removal log on the \`contacts\` branch."
+              ;;
+            *)
+              note="\`$NAME\` was not in any manifest, so there was nothing to remove. It may already be gone."
+              ;;
+          esac
+          printf '%s\n' "$note" > /tmp/note.md
+          gh issue comment "${{ github.event.issue.number }}" --body-file /tmp/note.md
+          gh issue close "${{ github.event.issue.number }}" \
+            --comment "Closed automatically after the removal was applied."
+
+      - name: Report an unusable request
+        if: steps.request.outputs.name == '' && steps.asker.outputs.trusted == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh issue comment "${{ github.event.issue.number }}" \
+            --body "I could not find a photo filename in this issue, so nothing was changed. The line has to read \`Photo: \`NN.jpg\`\` -- the Remove button in the photo viewer fills it in for you."
