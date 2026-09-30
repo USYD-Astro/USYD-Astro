@@ -326,6 +326,13 @@ p {
   background: var(--wash);
 }
 
+/* A section that directly continues the one above it, rather than starting a
+   new topic. Two sections stacked normally put 56px of padding on each side of
+   the join, which reads as a deliberate break; this halves it to one. */
+.section--flush {
+  padding-top: 0;
+}
+
 /* The gallery band's own photo moved to the fixed page backdrop (see
    body::before); the band carries no tint of its own and sits directly on
    the darkened backdrop, with white text for contrast. */
