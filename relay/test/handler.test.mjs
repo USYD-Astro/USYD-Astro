@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { webcrypto } from "node:crypto";
 
-import { handleUpload, handleModerate } from "../src/handler.js";
+import { handleUpload } from "../src/handler.js";
 
 if (!globalThis.crypto) {
   globalThis.crypto = webcrypto;
@@ -85,132 +85,6 @@ function fakeFetch({ failCommit = false, failDispatch = false, branchExists = tr
 }
 
 const body = async (response) => response.json();
-
-/* A stand-in for the removal request: the handler reads the method, the
-   origin header and a JSON body, and nothing else. */
-function stubModerate({
-  method = "POST",
-  origin = ORIGIN,
-  payload = { filename: "22.jpg", reason: "withdrawn at the member's request" },
-  raw = null,
-} = {}) {
-  return {
-    method,
-    headers: { get: (key) => (key.toLowerCase() === "origin" ? origin : null) },
-    json: async () => {
-      if (raw !== null) throw new SyntaxError("bad json");
-      return payload;
-    },
-  };
-}
-
-test("removal: queues a takedown, with no password like the upload", async () => {
-  const fetchStub = fakeFetch();
-  const response = await handleModerate(stubModerate(), ENV, { fetch: fetchStub });
-  assert.equal(response.status, 200);
-  assert.equal((await body(response)).ok, true);
-  // commitFile probes for an existing blob before writing, so the queued
-  // request is the PUT under contents/moderate/, not the GET beside it.
-  const queued = fetchStub.calls.find(
-    (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
-  );
-  assert.ok(queued, "a removal request was committed to the queue branch");
-  const sent = JSON.parse(queued.body);
-  assert.equal(sent.branch, "submissions", "queued off the served branch");
-  const written = JSON.parse(atob(sent.content));
-  assert.equal(written.filename, "22.jpg");
-  assert.match(written.reason, /withdrawn/);
-});
-
-test("removal: refuses a name that is not a bare gallery filename", async () => {
-  // Not authentication -- there is none. Path safety: this value is
-  // interpolated into a path on the queue branch, so a slash or a dot-segment
-  // has to die here rather than at the far end.
-  const hostile = [
-    "../../.github/workflows/gallery.yml",
-    "assets/data/gallery.yml",
-    "../secrets.txt",
-    "22.jpg/../../x",
-    "22.JPG",
-    "22.jpg?ref=main",
-    "22.jpg#x",
-    "/etc/passwd",
-    "22",
-    "",
-  ];
-  for (const filename of hostile) {
-    const fetchStub = fakeFetch();
-    const response = await handleModerate(
-      stubModerate({ payload: { filename } }),
-      ENV,
-      { fetch: fetchStub }
-    );
-    assert.equal(
-      response.status,
-      400,
-      `${JSON.stringify(filename)} must be refused, got ${response.status}`
-    );
-    assert.equal(
-      fetchStub.calls.some(
-        (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
-      ),
-      false,
-      `${JSON.stringify(filename)} must not queue anything`
-    );
-  }
-});
-
-test("removal: a curated non-jpg photo is removable too", async () => {
-  const fetchStub = fakeFetch();
-  const response = await handleModerate(
-    stubModerate({ payload: { filename: "03.png" } }),
-    ENV,
-    { fetch: fetchStub }
-  );
-  assert.equal(response.status, 200);
-});
-
-test("removal: refuses a different origin and non-POST, like the upload", async () => {
-  const other = await handleModerate(
-    stubModerate({ origin: "https://evil.example" }),
-    ENV,
-    { fetch: fakeFetch() }
-  );
-  assert.equal(other.status, 403);
-  const wrongMethod = await handleModerate(
-    stubModerate({ method: "GET" }),
-    ENV,
-    { fetch: fakeFetch() }
-  );
-  assert.equal(wrongMethod.status, 405);
-});
-
-test("removal: a malformed body does not become a queued file", async () => {
-  const fetchStub = fakeFetch();
-  const response = await handleModerate(stubModerate({ raw: "{" }), ENV, {
-    fetch: fetchStub,
-  });
-  assert.equal(response.status, 400);
-  assert.equal(
-    fetchStub.calls.some(
-      (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
-    ),
-    false
-  );
-});
-
-test("removal: a refused dispatch still reports the request as queued", async () => {
-  // It is committed either way; the dispatch is only what makes it fast, and
-  // the five-minute schedule is the floor.
-  const fetchStub = fakeFetch({ failDispatch: true });
-  const response = await handleModerate(stubModerate(), ENV, { fetch: fetchStub });
-  assert.equal(response.status, 200);
-  assert.ok(
-    fetchStub.calls.some(
-      (c) => c.method === "PUT" && c.url.includes("/contents/moderate/")
-    )
-  );
-});
 
 test("rejects anything that is not POST", async () => {
   const response = await handleUpload(stubRequest({ method: "GET" }), ENV, { fetch: fakeFetch() });

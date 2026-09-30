@@ -723,39 +723,6 @@ p {
   cursor: progress;
 }
 
-/* The password field. Deliberately unremarkable: it is not checked by
-   anything, and it should not look like it is. */
-.lightbox__admin-fields {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 10px;
-}
-
-/* Without this, the display above outranks the browser's own [hidden] rule and
-   the fields stay on screen whatever the attribute says -- which left the
-   Admin button toggling aria-expanded with no visible effect at all. Same
-   reason .rail__nav needs the same line. */
-.lightbox__admin-fields[hidden] {
-  display: none;
-}
-
-.lightbox__admin-label {
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.lightbox__admin-input {
-  font: inherit;
-  font-size: 0.78rem;
-  width: 108px;
-  padding: 3px 6px;
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 4px;
-}
-
 .lightbox__admin-note {
   font-size: 0.78rem;
   color: rgba(255, 255, 255, 0.45);

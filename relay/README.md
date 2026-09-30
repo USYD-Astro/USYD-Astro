@@ -52,41 +52,36 @@ anything downstream.
 
 ## Removing a photo
 
-`POST /moderate` unpublishes a photo. It is the same shape as `/upload` in
-reverse: the page posts a request, this Worker queues it to the submissions
-branch, and the publishing Action does the removal with the repository's own
-tooling, behind `gallery.py check`.
-
-**There is no password, and that is a decision rather than an oversight.**
-`/upload` has none either — it takes a photo from anyone who fills in the
-form — so a deletion that demanded a credential would be a strange asymmetry,
-and guarding one properly means a credential worth stealing. The viewer has a
-password box above the Remove button, but **nothing checks it**: it is not
-sent anywhere and there is no secret on this side to check it against. It is
-there so a photo does not disappear because someone clicked twice in a public
-gallery. Please do not describe it as protection.
-
-What *is* checked is the shape of the filename, and that is path safety rather
-than authentication. The name is interpolated into a path on the queue branch,
-so a slash or a dot-segment is refused at the door. Lowercase only, because
-every file the tool writes is lowercase.
-
-This Worker does not delete anything itself. It writes a request, and
-`tools/publish_submissions.py` performs the removal, which keeps one
-implementation of what a removal means and keeps this Worker from needing to
-understand manifests or generated markup.
-
-To remove a photo from a clone instead, with no relay involved at all:
+A photo is taken out with one command, from a clone of the repository:
 
 ```bash
 python3 tools/gallery.py remove 22.jpg --reason "withdrawn at the member's request"
+git commit -am "Remove a submitted photo" && git push
 ```
 
 That unlists it (drops the manifest entry and regenerates the markup) and
 purges the served bytes (the original, its thumbnail, and any hero slide) in
-one commit, and records it in `.contacts/removals.yml`. It cannot be left
-half done: a takedown that dropped the markup but left the file would keep
-serving the photo from its old URL, so `check` fails on any such drift.
+one commit, records it in `.contacts/removals.yml`, and re-derives both pages.
+It also refuses to leave half a job done, which is the only real danger here:
+a takedown that removed the markup but left the file would keep serving the
+photo from its old URL, so `check` fails on any such drift.
+
+**This relay has nothing to do with removals, and that is deliberate.** The
+page is static, so it cannot write to the repository, and the only credential
+that can lives here as `GITHUB_TOKEN`. An endpoint that deleted files would
+turn this Worker into a write primitive for the repository, reachable from
+anywhere on the internet -- its only defence today is an `Origin` header,
+which any non-browser client can set to anything. So there is no delete
+endpoint and no admin password. An earlier version had one; it was removed
+because a password guarding it was a real credential to hand out, and because
+the cost of deploying and maintaining it was not worth a task this small.
+
+The photo viewer still has a **Remove from gallery** button, behind a quiet
+`Admin` link. It does not delete anything and needs no password: it opens a
+prefilled GitHub issue naming the photo and the reason given, which is where
+the request and the account that made it are recorded. Whoever has write
+access runs the command above. GitHub is already the thing that decides who
+counts, so there is nothing to set up.
 
 ### What a removal does and does not do
 
