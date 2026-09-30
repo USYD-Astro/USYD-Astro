@@ -173,13 +173,11 @@ jobs:
           # the originals rather than every changed path.
           added=$(git status --porcelain -- assets/img/events | grep -v '/thumbs/' | wc -l)
           removed=$(git status --porcelain -- assets/img/events | grep -c '^ D' || true)
-          # .contacts is the submitter contact log. It has to be staged here or
-          # every automated run would record addresses it then drops, leaving
-          # the committee with no way to reply to anyone.
-          # The contact log and removal log are NOT staged here. They are
-          # committed to the `contacts` branch by the step below, because
-          # everything on main is published and a submitter's email address
-          # must not be. Pages serves .contacts/ in plain text.
+          # The contact log and removal log are NOT staged here, despite the
+          # addresses being recorded on the way through. They are committed to
+          # the `contacts` branch by the step below, because everything on main
+          # is published and a submitter's email address must not be. Pages
+          # serves .contacts/ in plain text.
           git add assets/img/events assets/data/gallery.yml assets/data/submissions.yml submit.html index.html
           if [ "$removed" -gt 0 ]; then
             git commit -m "Remove $removed photo(s) from the gallery"
@@ -191,6 +189,13 @@ jobs:
       - name: Publish the contact and removal logs to the contacts branch
         run: |
           set -euo pipefail
+          # commit-tree below builds a real commit, so it needs an identity.
+          # This step has no `if:` guard -- it runs on every single scheduled
+          # pass, including the ones where the queue is empty and there is
+          # nothing to publish -- so without this it failed every five
+          # minutes, forever, and took the whole job's status down with it.
+          git config user.name "SUAS photo relay"
+          git config user.email "usydastronomy@gmail.com"
           # The submitter names, email addresses and the record of what was
           # removed and why. These cannot go on main: the site publishes every
           # path on this branch, and a dot-directory is not a hiding place --
