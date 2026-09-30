@@ -79,9 +79,40 @@ the cost of deploying and maintaining it was not worth a task this small.
 The photo viewer still has a **Remove from gallery** button, behind a quiet
 `Admin` link. It does not delete anything and needs no password: it opens a
 prefilled GitHub issue naming the photo and the reason given, which is where
-the request and the account that made it are recorded. Whoever has write
-access runs the command above. GitHub is already the thing that decides who
-counts, so there is nothing to set up.
+the request and the account that made it are recorded. GitHub is already the
+thing that decides who counts, so there is nothing to set up.
+
+### Removals run themselves
+
+`.github/workflows/remove-photo.yml` picks that issue up and runs the command
+above, so nobody has to be at a terminal for a removal to happen. It is the
+twin of `publish-submission.yml` rather than a new mechanism: the same
+`GITHUB_TOKEN` the publishing workflow already has, the same contacts-branch
+step, the same `gallery.py` under it. The photo is off the site on the next
+Pages build, usually within a minute.
+
+That also settles the question the button's existence raises. The site can add
+a photo only because this relay holds a credential; a browser cannot hold one,
+so something with a credential has to be on the receiving end of a removal.
+The relay cannot be that something, for the reasons above -- but a GitHub
+workflow can, and it needs no account, no dashboard visit and no secret to
+hand out or rotate.
+
+Filing the issue is the authentication. Anyone can open an issue, including
+anonymously, so the workflow does not trust the request for arriving: it asks
+the collaborators API what permission the account actually has and requires
+`admin` or `write`. It is worth trusting that rather than
+`github.event.issue.author_association`, which reported `CONTRIBUTOR` for an
+account with admin on this repository.
+
+Anything the workflow cannot act on gets a reply rather than silence: an issue
+with no filename in it is answered with the format the button would have
+produced, and a request from an account without write access is refused with a
+warning on the run.
+
+Removals stay available by hand too, and the two do not conflict -- the
+command is the fallback if Actions is down, and `gallery.py check` catches it
+if they ever disagree.
 
 ### What a removal does and does not do
 
