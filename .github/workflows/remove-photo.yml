@@ -195,6 +195,10 @@ jobs:
         if: steps.request.outputs.name != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          # Named explicitly rather than left to gh's usual habit of reading
+          # the remote out of the checkout, because the step below runs on a
+          # path where there is no checkout at all.
+          GH_REPO: ${{ github.repository }}
           OUTCOME: ${{ steps.apply.outputs.outcome }}
           NAME: ${{ steps.request.outputs.name }}
           REASON: ${{ steps.request.outputs.reason }}
@@ -217,6 +221,9 @@ jobs:
         if: steps.request.outputs.name == '' && steps.asker.outputs.trusted == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          # This is the one step that can run with no checkout, so it cannot
+          # rely on gh working the repository out of a git remote.
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           gh issue comment "${{ github.event.issue.number }}" \
