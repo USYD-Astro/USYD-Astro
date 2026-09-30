@@ -24,7 +24,7 @@ browser  --POST multipart-->  relay (Cloudflare Worker)
                               (dispatches)          v
                                     .github/workflows/publish-submission.yml
                                                  v
-                          assets/img/events + submissions.yml + submit.html
+                          assets/img/events + submissions.yml + index.html
 ```
 
 The dispatch is what makes a photo appear in about a minute. That workflow
@@ -37,11 +37,11 @@ as failed would only tell the submitter to send the same photos again.
 It needs no new permission. The dispatch endpoint is covered by
 `Contents: Read and write`, the same one the commits above already use.
 
-Published photos land in the gallery on `submit.html`, alongside the credit,
-caption and date the submitter gave. The home page gallery stays curated, so a
-submission never appears there; moving one across is a matter of moving its
-entry from `assets/data/submissions.yml` to `assets/data/gallery.yml` and
-running `tools/gallery.py sync`.
+Published photos land in the competition rail on `index.html`, alongside the
+credit, caption and date the submitter gave. The curated grid on the same page
+stays hand-picked, so a submission never appears there; moving one across is a
+matter of moving its entry from `assets/data/submissions.yml` to
+`assets/data/gallery.yml` and running `tools/gallery.py sync`.
 
 **There is no captcha, on purpose.** The submitter's name, email and consent
 checkbox — plus strict origin, size, type and count limits — are the barriers;
@@ -162,7 +162,7 @@ refuse to submit in that state rather than failing halfway through an upload.
 
 ### 2. Point the site at the relay
 
-In `submit.html`, fill in the data attribute on the form:
+In `index.html`, fill in the data attribute on the form:
 
 ```html
 <form class="submit-form" id="photo-form" novalidate
@@ -190,9 +190,9 @@ point `data-relay` at the local URL, and upload something small. Check that:
 - the photo appears on the `submissions` branch, not on `main`
 - the relay commits, and a run of the publishing workflow starts on its own
   rather than waiting for the next tick of the schedule
-- the photos appear in the rail on `submit.html` for you, marked as going
-  live, with the name and other details you typed shown in the expanded view,
-  and nothing added to the home page gallery
+- the photos appear in the competition rail on `index.html` for you, marked as
+  going live, with the name and other details you typed shown in the expanded
+  view, and nothing added to the curated gallery grid
 - `submission.json` stays on the submissions branch and never reaches `main`,
   so the email address never does either
 

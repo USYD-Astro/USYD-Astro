@@ -8,8 +8,9 @@ name: Publish photo submissions
 # submitter's name and email, which must never reach the published manifests.
 #
 # Published submissions go to assets/data/submissions.yml and the rail on
-# submit.html, NOT to the home page gallery, which stays a curated selection
-# of photos. That also means submitted photos get no hero slide.
+# index.html, NOT to the curated gallery grid on that same page, which stays a
+# hand-picked selection of photos. That also means submitted photos get no
+# hero slide.
 #
 # Each submitter's name and email are recorded in the contact log, which is
 # committed to the `contacts` branch rather than to main. That is not
@@ -39,7 +40,7 @@ name: Publish photo submissions
 # this workflow was current when the branch was created. That is exactly how a
 # submitted photo came to be pushed without its manifest entry: the copy on
 # the branch staged the image but not assets/data/submissions.yml or
-# submit.html, so the photo went live unlisted and every later consistency
+# index.html, so the photo went live unlisted and every later consistency
 # check failed on it. For the same reason the queue branch carries no copy of
 # this file at all now. A repository_dispatch is a different animal: it is
 # evaluated against the default branch, so this copy is the one that runs.
@@ -178,7 +179,7 @@ jobs:
           # the `contacts` branch by the step below, because everything on main
           # is published and a submitter's email address must not be. Pages
           # serves .contacts/ in plain text.
-          git add assets/img/events assets/data/gallery.yml assets/data/submissions.yml submit.html index.html
+          git add assets/img/events assets/data/gallery.yml assets/data/submissions.yml index.html
           if [ "$removed" -gt 0 ]; then
             git commit -m "Remove $removed photo(s) from the gallery"
           else

@@ -5,12 +5,14 @@ The home page gallery used to be nineteen hand-written <button> elements
 pointing straight at full-resolution originals -- so the grid downloaded
 7.65 MB of images to display thumbnails. This tool owns that markup now.
 
-There are two collections, each with its own manifest and its own page:
+There are two collections, each with its own manifest. Both sets of generated
+markup now live on index.html, because the competition and its rail moved off
+the page of their own and onto the home page:
 
   gallery.yml      curated event photos -> the grid and hero slides on
                    index.html
   submissions.yml  whatever members have sent in through the upload form ->
-                   the sideways rail on submit.html, which carries the
+                   the sideways rail on index.html, which carries the
                    submitter's credit, caption and date into the lightbox
 
   sync   rebuild thumbnails, hero slides and the generated markup between
@@ -55,7 +57,6 @@ PHOTOS = ROOT / "assets" / "img" / "events"
 THUMBS = PHOTOS / "thumbs"
 SLIDES = ROOT / "assets" / "img" / "hero-slides"
 INDEX = ROOT / "index.html"
-SUBMIT = ROOT / "submit.html"
 # Submitter names and email addresses, and the record of what was removed and
 # why. These are a LOCAL WORKING COPY: the site is published from this branch
 # verbatim, so anything committed to main is public, and the one path that is
@@ -363,8 +364,8 @@ def splice_hero(index_text: str, body: str) -> str:
     return splice(index_text, body, HERO_START, HERO_END, HERO_INDENT)
 
 
-def splice_rail(submit_text: str, body: str) -> str:
-    return splice(submit_text, body, RAIL_START, RAIL_END)
+def splice_rail(index_text: str, body: str) -> str:
+    return splice(index_text, body, RAIL_START, RAIL_END)
 
 
 # ---------------------------------------------------------------- commands --
@@ -395,13 +396,11 @@ def cmd_sync(args) -> int:
     index = INDEX.read_text()
     index = splice(index, render(curated))
     index = splice_hero(index, render_hero(curated))
+    index = splice_rail(index, render_rail(sent_in))
     INDEX.write_text(index)
 
-    submit = SUBMIT.read_text()
-    SUBMIT.write_text(splice_rail(submit, render_rail(sent_in)))
-
     print(f"  {len(curated)} home-page photos  ->  thumbs, hero slides + index.html markup")
-    print(f"  {len(sent_in)} submitted photos  ->  thumbs + submit.html markup")
+    print(f"  {len(sent_in)} submitted photos  ->  thumbs + index.html rail markup")
     return 0
 
 
@@ -714,12 +713,9 @@ def cmd_check(args) -> int:
     index_text = INDEX.read_text()
     expected = splice(index_text, render(curated))
     expected = splice_hero(expected, render_hero(curated))
+    expected = splice_rail(expected, render_rail(sent_in))
     if expected != index_text:
         problems.append("index.html generated markup is out of date (run: gallery.py sync)")
-
-    submit_text = SUBMIT.read_text()
-    if splice_rail(submit_text, render_rail(sent_in)) != submit_text:
-        problems.append("submit.html generated markup is out of date (run: gallery.py sync)")
 
     for problem in problems:
         print(f"  FAIL  {problem}")
@@ -745,7 +741,7 @@ def main() -> int:
     p_add.add_argument("files", nargs="+")
     p_add.add_argument("--alt", default="Photo from a previous SUAS event")
     p_add.add_argument("--credit", default="")
-    p_add.add_argument("--caption", default="", help="shown with the photo on submit.html")
+    p_add.add_argument("--caption", default="", help="shown with the photo in the rail")
     p_add.add_argument(
         "--collection",
         choices=("gallery", "submissions"),

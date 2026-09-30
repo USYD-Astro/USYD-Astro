@@ -9,12 +9,13 @@ hand-added photo gets (tools/gallery.py), then reports what is left.
     python3 tools/publish_submissions.py --incoming /tmp/incoming/submissions
 
 Entries go into assets/data/submissions.yml, which feeds the rail on
-submit.html -- NOT the home page gallery, which stays curated.
+index.html -- NOT the curated gallery grid on the same page, which stays a
+hand-picked selection.
 
 Only images are picked up; `submission.json` stays behind on the submissions
 branch as the record of who sent what. What travels onward into the published
 gallery is the credit, the caption and the receipt date, which is what the
-expanded view on submit.html shows. The submitter's *name* is used only as a
+expanded view in the rail shows. The submitter's *name* is used only as a
 fallback credit when they left the credit field empty.
 
 The email address is not published, but it is not thrown away either: it is

@@ -6,7 +6,7 @@
 #
 # tools/publish_submissions.py appends to this file when the relay's queued
 # uploads are published, and tools/gallery.py generates the sideways rail
-# between the submissions:start / submissions:end markers in submit.html from
+# between the submissions:start / submissions:end markers in index.html from
 # it. Do not edit that markup by hand -- run the tool:
 #
 #   python3 tools/gallery.py sync     # rebuild thumbs + markup from this file

@@ -176,7 +176,7 @@ jobs:
           # serves every path on main, and it served .contacts/contacts.yml in
           # plain text once. The log goes to its own branch below.
           git add assets/img/events assets/data/gallery.yml \
-                  assets/data/submissions.yml submit.html index.html
+                  assets/data/submissions.yml index.html
           if [ -z "$(git status --porcelain)" ]; then
             echo "nothing staged"
             exit 0
