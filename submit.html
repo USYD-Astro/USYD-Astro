@@ -43,18 +43,17 @@
 
   <section class="section">
     <div class="wrap">
-      <h2>Send us your photos!</h2>
-      <p class="lede">Got a good shot from one of our stargazing trips or on-campus events? Send it in and it joins the gallery below.</p>
+      <div class="title-row">
+        <h2>2026 Astrophotography Competition</h2>
 
-      <!-- The upload form is opened as a dialog by submit.js. It is not
-           rendered flat on the page because the page is mostly an invitation
-           and a gallery; the form is a detour you take deliberately. The
-           dialog needs JavaScript, and so does the form itself -- it posts to
-           the relay from this page -- so nothing usable is hidden from anyone
-           by putting it behind a click. -->
-      <p class="cta">
+        <!-- The upload form is opened as a dialog by submit.js. It is not
+             rendered flat on the page because the page is mostly an invitation
+             and a gallery; the form is a detour you take deliberately. The
+             dialog needs JavaScript, and so does the form itself -- it posts to
+             the relay from this page -- so nothing usable is hidden from anyone
+             by putting it behind a click. -->
         <button type="button" class="button button--lg" id="open-upload" aria-haspopup="dialog" aria-controls="upload-modal">Upload your photos</button>
-      </p>
+      </div>
 
       <noscript>
         <p class="hint">Uploading needs JavaScript, because the photos go straight from this page to our upload service. Email us instead and we will add them for you: <a href="mailto:usydastronomy@gmail.com">usydastronomy@gmail.com</a></p>
@@ -65,7 +64,6 @@
   <section class="section" id="sent-in">
     <div class="wrap">
       <div class="rail-head">
-        <h2>Sent in thus far</h2>
         <!-- The arrows are revealed by main.js only when the rail actually
              overflows; without JavaScript the rail is still swipeable and
              scrollable, so nothing is lost. -->
@@ -74,7 +72,7 @@
           <button type="button" id="rail-next" aria-controls="rail" aria-label="More photos">&#8250;</button>
         </div>
       </div>
-      <p class="lede">Click on a photo below to see full size + more info.</p>
+      <p class="lede">A gallery of photos sent in thus for as shown below. Click on a photo to see full size + more info.</p>
 
       <!-- Where the result of a successful upload is reported. The upload
            dialog closes on success so the submitter can see the photos they

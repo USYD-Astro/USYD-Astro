@@ -457,21 +457,32 @@ p {
   transform: scale(1.06);
 }
 
-/* ---------- submitted photo rail ----------------------------------------- */
-
-/* The submit page's own gallery. Four photos across at a time, paged
-   sideways: the rail is the scroll container, so a phone can swipe it and the
-   arrows simply scroll it a page at a time. */
-.rail-head {
+/* The competition title and its call to action share a line, so the button
+   sits beside the heading rather than on a row of its own. Wraps to a column
+   on a narrow window. */
+.title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 16px 24px;
   flex-wrap: wrap;
 }
 
-.rail-head h2 {
+.title-row h2 {
   margin-bottom: 0;
+}
+
+/* ---------- submitted photo rail ----------------------------------------- */
+
+/* The submit page's own gallery, paged sideways, and the arrows that do the
+   paging. With no heading beside them the arrows are the only thing on this
+   line, so they sit on the right of it. */
+.rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .rail {
