@@ -76,7 +76,12 @@ echo "Deploying to $HOST:$TARGET"
 
 # Photographs. --ignore-existing ships the photographs that come with the
 # repository and leaves everything the gallery has gained since alone.
-"${RSYNC[@]}" "${dry_run[@]}" --ignore-existing photos/ "$HOST:${TARGET}photos/"
+#
+# --no-perms because this directory is chmodded on the server below, after the
+# transfer. Letting rsync also set the modes from the checkout would have the two
+# steps fighting: the next deploy would report every photo directory as changed
+# and --dry-run would never come back clean.
+"${RSYNC[@]}" "${dry_run[@]}" --ignore-existing --no-perms photos/ "$HOST:${TARGET}photos/"
 
 if [[ ${#dry_run[@]} -eq 0 ]]; then
   # Pages this site no longer has. rsync mirrors only the directories above, so a
