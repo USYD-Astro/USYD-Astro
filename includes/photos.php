@@ -420,11 +420,17 @@ function photo_reserve_number(array &$metadata): int
         if (isset($spent[$n])) {
             return true;
         }
-        $name = sprintf('%02d.jpg', $n);
-        return is_file(GALLERY_DIR . '/' . $name)
-            || is_file(QUEUE_DIR . '/' . $name)
-            || is_file(GALLERY_DIR . '/' . sprintf('%02d.png', $n))
-            || is_file(QUEUE_DIR . '/' . sprintf('%02d.png', $n));
+        // Every extension the store shows, not only .jpg and .png: a number
+        // whose file is still on disk in any of them is still in use, and
+        // photo_thumb_path() names a thumbnail after the stem alone, so two
+        // files sharing a number would share one thumbnail as well.
+        foreach (photo_suffixes() as $suffix) {
+            $name = sprintf('%02d.%s', $n, $suffix);
+            if (is_file(GALLERY_DIR . '/' . $name) || is_file(QUEUE_DIR . '/' . $name)) {
+                return true;
+            }
+        }
+        return false;
     };
     while ($taken($number)) {
         $number++;
