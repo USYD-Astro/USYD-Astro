@@ -1,0 +1,25 @@
+# Served by Apache on the Namecheap cPanel host.
+#
+# The site is PHP served straight out of this directory: there is no build step
+# and no static generator, so the only things Apache has to be told are which
+# file answers for a directory, and that nothing private is reachable from a URL.
+
+DirectoryIndex index.php index.html
+
+# Without this, /photos/thumbs/ is a browsable index of every photo on the site.
+Options -Indexes
+
+# Code and data, not pages. Both live above this directory on the server anyway
+# -- includes/ is only reachable if it is deployed here, and the data directory
+# never is -- but a mistaken deploy should not be able to expose either.
+RedirectMatch 404 ^/(includes|data)(/|$)
+
+# Support material that has no business being fetched: the submission log, the
+# config template, this repository's documentation, the deploy script.
+<FilesMatch "\.(json|jsonl|log|sh|md)$">
+  Require all denied
+</FilesMatch>
+
+<FilesMatch "^(config\.example\.php)$">
+  Require all denied
+</FilesMatch>

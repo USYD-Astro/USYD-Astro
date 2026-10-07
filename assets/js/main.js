@@ -14,6 +14,49 @@
     });
   }
 
+  /* ---- under-construction notice ---------------------------------------- */
+  /* The notice is in the markup of every page and is visible whether or not
+     this script runs. The inline script in the head turns it into a modal when
+     scripting is available, and hides it again for the rest of the session if
+     it has already been dismissed; all that is left to do here is the
+     dismissing. It sits above the lightbox below, which has to build itself
+     before it can be asked anything. */
+  var construction = document.getElementById("construction");
+  var constructionDismiss = document.getElementById("construction-dismiss");
+  var constructionShown = function () {
+    return document.documentElement.classList.contains("js")
+      && !document.documentElement.classList.contains("construction-dismissed");
+  };
+
+  if (construction && constructionDismiss) {
+    /* Only claim focus and the scrollbar if the notice is actually in front of
+       the visitor: with it already dismissed for this session, and no modal on
+       screen, locking scrolling here would strand every later page. */
+    if (constructionShown()) {
+      constructionDismiss.focus();
+      document.body.style.overflow = "hidden";
+    }
+
+    var dismissConstruction = function () {
+      document.documentElement.classList.add("construction-dismissed");
+      document.body.style.overflow = "";
+      try {
+        sessionStorage.setItem("suas-construction-dismissed", "1");
+      } catch (error) {
+        /* Storage unavailable: the notice simply returns on the next page. */
+      }
+      constructionDismiss.blur();
+    };
+
+    constructionDismiss.addEventListener("click", dismissConstruction);
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && constructionShown()) {
+        dismissConstruction();
+      }
+    });
+  }
+
   /* ---- hero slideshow ---------------------------------------------------- */
   /* The band at the top of the home page crossfades through the gallery
      photos. The first slide is server-rendered as is-current, so the band
@@ -145,18 +188,18 @@
 
   /* ---- removing a photo ------------------------------------------------- */
   /* The button a committee member uses to take a photo out of the gallery. It
-     posts to the relay, the same endpoint the upload form uses and over the
-     same credential, and the photo is off the site on the next Pages build.
+     posts to moderate.php on this site.
 
-     The password box below is a speed bump, and nothing checks it. It is not
-     sent and there is no secret on the other end to check it against, because
-     this is a static page: a password read here would be a string in every
-     visitor's devtools, so treating it as a guard would be a lie. What it
-     actually does is stop a photo being deleted because someone clicked twice
-     in a public gallery.
+     The password box is now a real check. It used to be a speed bump that
+     nothing verified, because this was a static page and a password read here
+     would have been a string in every visitor's devtools -- so the page said so
+     rather than pretend. The endpoint is on this server and holds the hash, so
+     the password is sent over HTTPS and checked against it there, and the photo
+     is off the site as soon as the button is pressed rather than on the next
+     build.
 
-     HIDING THE BUTTON IS NOT SECURITY EITHER. It is kept quiet because it is
-     not for visitors, not because anything depends on them not finding it. */
+     HIDING THE BUTTON IS STILL NOT SECURITY. It is kept quiet because it is not
+     for visitors, not because anything depends on them not finding it. */
   var MODERATE = (function () {
     /* On <body> of every page: the remove control appears in the lightbox
        wherever a photo is opened, and the upload form that carried this
@@ -206,8 +249,9 @@
     input.type = "password";
     input.className = "lightbox__admin-input";
     input.autocomplete = "off";
-    /* Say so on the control, so nobody mistakes it for a real guard. */
-    input.title = "Not checked. It only stops accidental clicks.";
+    /* The password this site is administered with. It is checked on the server,
+       so it is the same one the admin page takes. */
+    input.title = "The gallery password.";
     label.appendChild(input);
     fields.appendChild(label);
 
@@ -223,8 +267,6 @@
       if (button.disabled) {
         return;
       }
-      /* Empty means nobody typed anything, which is the mis-click this box
-         exists to catch. It is not a check -- see the note above. */
       if (!input.value) {
         input.focus();
         return;
@@ -234,7 +276,7 @@
         return;
       }
       var reason = window.prompt(
-        "Why is this photo being removed? This is recorded in the repository.",
+        "Why is this photo being removed? This is recorded with the removal.",
         ""
       );
       if (reason === null) {
@@ -245,9 +287,14 @@
       fetch(MODERATE, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        /* The password is deliberately absent: nothing on the other end would
-           check it, so sending it would only put it in a request log. */
-        body: JSON.stringify({ filename: name, reason: reason }),
+        /* The password goes with it: moderate.php holds the hash and checks it,
+           which is the whole reason this endpoint is a file on our own server
+           rather than something the page can talk to without a credential. */
+        body: JSON.stringify({
+          filename: name,
+          reason: reason,
+          password: input.value,
+        }),
       })
         .then(function (response) {
           return response.json().then(
@@ -255,16 +302,16 @@
               return { ok: response.ok, data: data };
             },
             function () {
-              /* A non-JSON answer is a proxy or a Worker error page, not a
-                 verdict from the relay. */
+              /* A non-JSON answer is a proxy or server error page, not a
+                 verdict from moderate.php. */
               return { ok: false, data: null };
             }
           );
         })
         .then(function (result) {
           if (result.ok && result.data && result.data.ok) {
-            /* The photo is off the site in about a minute, so this is the end
-               of the view rather than something to go back from. */
+            /* The photo is off the site already, so this is the end of the view
+               rather than something to go back from. */
             hide();
             window.alert(
               (result.data && result.data.message) ||
@@ -281,7 +328,7 @@
         .catch(function () {
           button.disabled = false;
           button.textContent = "Remove from gallery";
-          window.alert("We could not reach the relay. Is the site online?");
+          window.alert("We could not reach the server. Is the site online?");
         });
     });
 
@@ -446,12 +493,12 @@
     item.type = "button";
     item.className = "rail__item rail__item--pending";
 
-    /* The details go on the image the way gallery.py puts them on a
-       published one, so the lightbox reads them from the same place. Text
-       is set as text, never as markup. */
+    /* The details go on the image the way the server puts them on a published
+       one, so the lightbox reads them from the same place. Text is set as
+       text, never as markup. */
     var img = document.createElement("img");
     img.src = URL.createObjectURL(photo.file);
-    img.alt = "Your photo, not yet in the published gallery";
+    img.alt = "Your photo, just added to the submitted gallery";
     if (detail.credit) {
       img.dataset.credit = detail.credit;
     }
@@ -465,7 +512,7 @@
 
     var flag = document.createElement("span");
     flag.className = "rail__flag";
-    flag.textContent = "Going live";
+    flag.textContent = "Just added";
     item.appendChild(flag);
 
     return { item: item, img: img };
@@ -486,8 +533,8 @@
       empty.parentNode.removeChild(empty);
     }
 
-    /* Appended, not prepended: tools/gallery.py appends manifest entries in
-       order too, so these land where the published photos will land. */
+    /* Appended, not prepended: photo_all() lists the stored photos in order
+       too, so these land where the published photos will land. */
     var images = [];
     var newest = null;
     photos.forEach(function (photo) {
@@ -501,8 +548,8 @@
       var count = photos.length;
       note.textContent =
         count === 1
-          ? "Your photo is now at the end of the gallery. It goes live for everyone in a minute or two."
-          : "Your " + count + " photos are now at the end of the gallery. They go live for everyone in a minute or two.";
+          ? "Your photo is now at the end of the gallery."
+          : "Your " + count + " photos are now at the end of the gallery.";
       note.hidden = false;
     }
 

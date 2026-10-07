@@ -1,19 +1,18 @@
 /* Photo submission.
  *
- * The chosen photos are POSTed to the upload relay. Pages cannot accept an
- * upload and no credential can live in this page, so a small Worker holds the
- * GitHub token and commits the submission for us. See relay/README.md. The
- * endpoint is configured on the form element.
+ * The chosen photos are POSTed to upload.php, on this same server. It used to
+ * be a Cloudflare Worker, because Pages could not accept an upload and no
+ * credential that can write to a repository belongs in a public page. PHP can
+ * take the upload itself, so the endpoint is just the form's own action.
  *
  * Nothing is re-encoded on the way out: the file a visitor picked or dropped
- * is the file that gets sent, metadata and all. So it is the publishing
- * Action, not this page, that removes EXIF and GPS -- it re-encodes each photo
- * when it derives the web-sized copies the site serves, and those copies are
- * the only ones that are ever published.
+ * is the file that gets sent, metadata and all. So it is the endpoint, not this
+ * page, that removes EXIF and GPS -- it re-encodes each photo through GD as it
+ * stores it, and that copy is the only one the site ever serves.
  *
  * What is checked here is therefore only what would waste a submitter's time
- * or jam the queue: the eight-photo cap, the relay's 12 MB ceiling, and the
- * formats the publishing toolchain can actually read.
+ * or jam the queue: the eight-photo cap, the endpoint's 12 MB ceiling, and the
+ * formats it can actually read.
  *
  * This also owns the dialog the form lives in. Closing it deliberately keeps
  * the form's contents, so the upload dialog can be dismissed and reopened
@@ -27,16 +26,18 @@
     return;
   }
 
-  var RELAY = form.dataset.relay || "";
+  /* The endpoint is the form's own action, so there is nothing to configure:
+     it is the same script that would take the submission without JavaScript. */
+  var ENDPOINT = form.getAttribute("action") || "upload.php";
 
   var MAX_FILES = 8;
-  /* The relay refuses anything larger, so catching it here saves a visitor on
+  /* upload.php refuses anything larger, so catching it here saves a visitor on
      a phone the wait of uploading a photo that was always going to bounce. */
   var MAX_BYTES = 12 * 1048576;
-  /* What tools/gallery.py can open. HEIC and HEIF are deliberately absent:
-     Pillow cannot read them without a decoder the publishing Action does not
-     install, and one unreadable photo stops the whole publishing run rather
-     than just that photo. */
+  /* What GD can open. HEIC and HEIF are deliberately absent: GD cannot read
+     them without an extension this host does not carry, and a file the server
+     cannot read is a submission that fails after the visitor has waited for
+     it to upload. */
   var PUBLISHABLE = ["image/jpeg", "image/png", "image/webp"];
 
   /* Read fields by id rather than form.<name>: HTMLFormElement has its own
@@ -307,8 +308,7 @@
   function buildForm() {
     var body = new FormData();
     /* No credit field: the name the submitter gives is what their photos are
-       published under. tools/publish_submissions.py already falls back to the
-       name when the credit is empty, so nothing downstream needs changing. */
+       published under, which is what upload.php stores as the credit. */
     body.append(
       "meta",
       JSON.stringify({
@@ -318,8 +318,11 @@
         consent: document.getElementById("consent").checked
       })
     );
+    /* The [] is what makes these arrive as a list: PHP keeps only the last
+       file of a repeated plain field name, so without it a submission of
+       eight photos would store one. */
     prepared.forEach(function (entry) {
-      body.append("photos", entry.file, entry.name);
+      body.append("photos[]", entry.file, entry.name);
     });
     return body;
   }
@@ -331,8 +334,8 @@
      necessarily what was sent. The gallery has to show what was sent, or it
      shows a photo nobody uploaded and hides one that was.
 
-     There is no credit field, so the name they gave is the credit, which is
-     the same fallback tools/publish_submissions.py applies downstream. */
+     There is no credit field, so the name they gave is the credit, exactly as
+     upload.php records it. */
   var sent = null;
 
   function snapshot() {
@@ -364,9 +367,9 @@
   }
 
   /* Local, so a submitter in Sydney who sends a photo at 9am sees the 9th
-     rather than the UTC date. The published entry carries the relay's
-     timestamp, which is UTC, so the two can differ by a day near midnight --
-     cosmetic, and the sort of thing nobody reads twice. */
+     rather than the server's UTC date. The date upload.php records is UTC, so
+     the two can differ by a day near midnight -- cosmetic, and the sort of
+     thing nobody reads twice. */
   function today() {
     var now = new Date();
     return (
@@ -409,8 +412,11 @@
 
   function upload(body) {
     var request = new XMLHttpRequest();
-    request.open("POST", RELAY);
+    request.open("POST", ENDPOINT);
     request.responseType = "json";
+    /* Set, because the timeout listener below is otherwise unreachable: an
+       upload that stalls would sit there rather than say so. */
+    request.timeout = 180000;
 
     request.upload.addEventListener("progress", function (event) {
       if (!event.lengthComputable) {
@@ -447,10 +453,6 @@
   form.addEventListener("submit", function (event) {
     event.preventDefault();
 
-    if (!RELAY) {
-      fail("Uploads are not switched on yet. Please try again later.");
-      return;
-    }
     if (!prepared.length) {
       say("Choose at least one photo first.", "warn");
       input.focus();
@@ -480,10 +482,4 @@
     sent = snapshot();
     upload(buildForm());
   });
-
-  /* Show the visitor why the button does nothing, rather than letting them
-     fill the whole form in first. */
-  if (!RELAY) {
-    say("Uploads are not switched on yet.", "warn");
-  }
 })();

@@ -3,40 +3,22 @@ reference/preview-*.html
 reference/desktop-*.html
 reference/contact-sheet.html
 
-# Raw rescue output. These are the images exactly as downloaded; the site
-# itself uses the curated copies in assets/img/, which contain the same
-# bytes under meaningful names. Re-derivable via reference/rescue_images.py.
+# Raw rescue output. These are the images exactly as downloaded; the site itself
+# uses the curated copies in assets/img/, which contain the same bytes under
+# meaningful names. Re-derivable via reference/rescue_images.py.
 reference/originals/
 
-# Staging area for photo uploads. The relay's working copy of the
-# submissions branch lands here, and neither it nor the contact log belongs in
-# the published tree. Contact details go to the `contacts` branch; see the
-# .contacts/ note below before assuming why that is safe.
-submissions/
+# Server-side state, if the site is ever developed against a checkout: the credit
+# lines in photos.json, the contact log and the removals log. On the server these
+# live outside the web root; here they are simply never committed. Nothing that
+# holds submitter email addresses belongs in a repository, published or not.
+suas-config.php
+suas-data/
 
-# The contact log and removal log, as a local working copy. See below.
-.contacts/
-
-# .contacts/ is the local working copy of the submitter contact log and the
-# removal log. It is ignored HERE, on main, because main is published: GitHub
-# Pages serves everything on this branch and it does serve dot-directories --
-# .contacts/contacts.yml came back in plain text over HTTP when it was
-# committed. Pages excludes .git and .github by name; that is not a general
-# rule about dot-directories and must not be relied on.
-#
-# The publishing workflow commits these files to the `contacts` branch, which
-# Pages does not deploy. They are readable by anyone with access to the
-# repository and served to nobody. Keep it that way.
-
-# Wrangler's local build output, if the relay is developed in place.
-relay/node_modules/
-relay/.wrangler/
+# A deploy key copied into the checkout, if anyone ever does that.
+*.pem
 
 # OS / editor noise
 .DS_Store
 Thumbs.db
 *.swp
-
-# Python bytecode from tools/
-__pycache__/
-*.pyc
