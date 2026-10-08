@@ -76,7 +76,7 @@ require __DIR__ . '/includes/layout/header.php';
   <section class="section section--flush" id="sent-in">
     <div class="wrap">
       <div class="rail-head">
-        <p class="lede">A gallery of photos sent in thus far as shown below. Click on a photo to see full size + more info.</p>
+        <p class="lede">A gallery of photos sent in thus far is shown below. Click on a photo to see full size + more info.</p>
 
         <!-- The arrows are revealed by main.js only when the rail actually
              overflows; without JavaScript the rail is still swipeable and
