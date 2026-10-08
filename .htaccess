@@ -9,10 +9,13 @@ DirectoryIndex index.php index.html
 # Without this, /photos/thumbs/ is a browsable index of every photo on the site.
 Options -Indexes
 
-# Code and data, not pages. Both live above this directory on the server anyway
-# -- includes/ is only reachable if it is deployed here, and the data directory
-# never is -- but a mistaken deploy should not be able to expose either.
-RedirectMatch 404 ^/(includes|data)(/|$)
+# Code, data and archive material, not pages. The first two live above this
+# directory on the server anyway -- includes/ is only reachable if it is deployed
+# here, and the data directory never is -- but a mistaken deploy should not be
+# able to expose either. reference/ is the archived old site and the scripts that
+# built it: a git checkout ships the whole tree, so it lands here whether or not
+# anything links to it.
+RedirectMatch 404 ^/(includes|data|reference)(/|$)
 
 # Support material that has no business being fetched: the submission log, the
 # config template, this repository's documentation, the deploy script.
@@ -21,5 +24,12 @@ RedirectMatch 404 ^/(includes|data)(/|$)
 </FilesMatch>
 
 <FilesMatch "^(config\.example\.php)$">
+  Require all denied
+</FilesMatch>
+
+# Deployment bookkeeping and repository metadata. They carry no secret, but they
+# are not pages either, and a git checkout puts them in the web root where the
+# extension rules above cannot reach them.
+<FilesMatch "^(server-state\.txt|\.gitignore)$">
   Require all denied
 </FilesMatch>
