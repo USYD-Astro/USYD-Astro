@@ -987,6 +987,14 @@ p {
   margin-top: 22px;
 }
 
+/* Shown when the mirror's last good crawl is old or failed: a note under the
+   lede rather than an error, because the calendar below it is still usable. */
+.calendar__stale {
+  color: var(--muted);
+  margin-top: 10px;
+  font-size: 0.95em;
+}
+
 /* ---------- event dialog ------------------------------------------------- */
 
 /* Same chrome as the upload dialog, sized for a paragraph and a poster. */

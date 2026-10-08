@@ -5,13 +5,20 @@ declare(strict_types=1);
  * The society's own upcoming events, for the calendar on the home page.
  *
  * Nothing is scraped here. The Sydney Uni Canoe Club already reads our
- * Instagram the hard way -- their `outdoors/fetch_astro.py` mirrors the feed
- * through narro.info, OCRs the event poster for the date, venue and time, and
- * merges the result into `outdoors/outdoors_cache.json` on a Git cron every
- * fifteen minutes -- and they publish that cache as a plain JSON file. Fetching
- * the events they have already extracted is the same data for none of the
- * duplication: the two clubs would otherwise keep two copies of one scraper,
- * and only one of them would be maintained.
+ * Instagram the hard way -- their `outdoors/fetch_astro.py` reads the feed their
+ * own bridge writes (a logged-out browser reads the profile and each post; the
+ * narro.info mirror it replaced is gone), OCRs the event poster for the date,
+ * venue and time, and merges the result into `outdoors/outdoors_cache.json` on a
+ * Git cron every fifteen minutes -- and they publish that cache as a plain JSON
+ * file. Fetching the events they have already extracted is the same data for
+ * none of the duplication: the two clubs would otherwise keep two copies of one
+ * scraper, and only one of them would be maintained.
+ *
+ * Their file also carries the mirror's own health -- whether the last crawl
+ * succeeded (`astro_status`) and when it last read the profile
+ * (`astro_meta.fetched_at`). Both are read here and surfaced by the page (see
+ * astro_events_health()), because a calendar that quietly shows last month's
+ * events is worse than one that admits it might be out of date.
  *
  * What that costs is a dependency, and it is worth naming: usydcanoeclub.org is
  * where the events come from, and if they stop publishing that file this page
@@ -40,6 +47,15 @@ const EVENTS_TTL_SECONDS = 1800;
 /** Outbound fetch budget. A visitor is waiting on this, so it is short. */
 const EVENTS_TIMEOUT_SECONDS = 6;
 
+/**
+ * How old the mirror's last successful read may be before the calendar says so.
+ *
+ * The canoe club crawls every fifteen minutes, so hours of silence means the
+ * pipeline upstream is broken rather than merely between runs. Six hours leaves
+ * room for a slow CI queue without hiding a feed that is a day behind.
+ */
+const EVENTS_STALE_AFTER_SECONDS = 6 * 3600;
+
 /** The cache file, in the private data directory beside public_html. */
 function events_cache_path(): string
 {
@@ -48,23 +64,23 @@ function events_cache_path(): string
 }
 
 /**
- * The source's astronomy events, as this site wants to read them.
+ * The source's astronomy events and its own health, as this site reads them.
  *
- * Returns [] for every kind of failure -- no curl, a timeout, a non-200, a body
- * that is not JSON, a JSON body with no astronomy keys. The caller renders what
- * it gets and says nothing about what went wrong; there is nothing a visitor
- * could do about it.
+ * Every failure -- no curl, a timeout, a non-200, a body that is not JSON, a
+ * JSON body with no astronomy keys -- comes back as the empty shape, with no
+ * events and no health. The caller renders what it gets; there is nothing a
+ * visitor could do about a fetch that failed.
  */
 function events_fetch_source(): array
 {
     $body = events_http_get(EVENTS_SOURCE_URL);
     if ($body === null) {
-        return [];
+        return events_source_shape([]);
     }
 
     $decoded = json_decode($body, true);
     if (!is_array($decoded) || !isset($decoded['astro_events']) || !is_array($decoded['astro_events'])) {
-        return [];
+        return events_source_shape([]);
     }
 
     $events = [];
@@ -74,7 +90,24 @@ function events_fetch_source(): array
         }
     }
 
-    return $events;
+    $meta = is_array($decoded['astro_meta'] ?? null) ? $decoded['astro_meta'] : [];
+
+    return events_source_shape($events, [
+        'status' => (string) ($decoded['astro_status'] ?? ''),
+        'error' => (string) ($decoded['astro_error'] ?? ''),
+        'fetched_at' => (string) ($meta['fetched_at'] ?? ''),
+    ]);
+}
+
+/** The one shape every caller reads from the source: the events and its health. */
+function events_source_shape(array $events, array $health = []): array
+{
+    return [
+        'events' => $events,
+        'status' => (string) ($health['status'] ?? ''),
+        'error' => (string) ($health['error'] ?? ''),
+        'fetched_at' => (string) ($health['fetched_at'] ?? ''),
+    ];
 }
 
 /**
@@ -182,19 +215,65 @@ function astro_events(): array
     $path = events_cache_path();
     $stored = events_cache_read($path);
     $checked_at = (int) ($stored['checked_at'] ?? 0);
+    $stored_source = is_array($stored['source'] ?? null) ? $stored['source'] : [];
 
     if ($checked_at > 0 && (time() - $checked_at) < EVENTS_TTL_SECONDS) {
+        events_health_record($stored_source);
         return events_normalise($stored['events'] ?? []);
     }
 
     $fetched = events_fetch_source();
-    if ($fetched === []) {
+    if ($fetched['events'] === []) {
         // Keep whatever was last known good, and stamp the attempt so the next
-        // visitor in this window does not pay for another timeout.
-        return events_normalise(events_cache_store($path, $stored['events'] ?? [], time()));
+        // visitor in this window does not pay for another timeout. The stored
+        // health travels with it, so the calendar reports the mirror it last
+        // heard from rather than going silent.
+        events_health_record($stored_source);
+        return events_normalise(events_cache_store($path, $stored['events'] ?? [], time(), $stored_source));
     }
 
-    return events_normalise(events_cache_store($path, $fetched, time()));
+    events_health_record($fetched);
+    return events_normalise(events_cache_store($path, $fetched['events'], time(), $fetched));
+}
+
+/**
+ * What the last read of the mirror knew about it, for the page to show.
+ *
+ * `stale` is true when the mirror reported a failed crawl, or when its last
+ * successful read is older than EVENTS_STALE_AFTER_SECONDS. A source that says
+ * nothing -- an older cache file with no health keys -- does not accuse the
+ * calendar of being stale on no evidence.
+ */
+function astro_events_health(): array
+{
+    return events_health();
+}
+
+/** The mirror's health, remembered for the page after the fetch above. */
+function events_health(?array $set = null): array
+{
+    static $health = ['status' => '', 'error' => '', 'fetched_at' => '', 'age_seconds' => null, 'stale' => false];
+    if ($set !== null) {
+        $health = $set;
+    }
+    return $health;
+}
+
+/** Judge one source reading and remember it for astro_events_health(). */
+function events_health_record(array $source): void
+{
+    $fetched_at = (string) ($source['fetched_at'] ?? '');
+    $timestamp = $fetched_at === '' ? false : strtotime($fetched_at);
+    $age = $timestamp === false ? null : max(0, time() - $timestamp);
+
+    events_health([
+        'status' => (string) ($source['status'] ?? ''),
+        'error' => (string) ($source['error'] ?? ''),
+        'fetched_at' => $fetched_at,
+        'age_seconds' => $age,
+        'stale' => ((string) ($source['status'] ?? '') === 'error')
+            || ($age !== null && $age > EVENTS_STALE_AFTER_SECONDS),
+    ]);
 }
 
 /**
@@ -341,9 +420,9 @@ function events_cache_read(string $path): array
  * Called with the previous events even when the fetch failed, which is what
  * makes a failed attempt cost a timestamp rather than the calendar.
  */
-function events_cache_store(string $path, array $events, int $checked_at): array
+function events_cache_store(string $path, array $events, int $checked_at, array $source = []): array
 {
-    $payload = ['checked_at' => $checked_at, 'events' => $events];
+    $payload = ['checked_at' => $checked_at, 'events' => $events, 'source' => $source];
 
     if ($path !== '') {
         // Best effort. A data directory that cannot be written makes every page

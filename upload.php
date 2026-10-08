@@ -120,13 +120,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 /* Only this site's own forms may post here. A missing Origin is allowed because
    the endpoint is also useful from curl during a deploy check; a wrong one is
    not, or any other site could use our disk as its own image host. */
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if ($origin !== '') {
-    $originHost = parse_url($origin, PHP_URL_HOST);
-    $requestHost = (string) ($_SERVER['HTTP_HOST'] ?? '');
-    if ($originHost !== $requestHost) {
-        upload_fail(403, 'This form has to be sent from the SUAS site itself.');
-    }
+$origin = (string) ($_SERVER['HTTP_ORIGIN'] ?? '');
+$requestHost = (string) parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST);
+if ($origin !== '' && strcasecmp((string) parse_url($origin, PHP_URL_HOST), $requestHost) !== 0) {
+    upload_fail(403, 'This form has to be sent from the SUAS site itself.');
 }
 
 /* An oversized body is discarded by PHP before we are called, which leaves no

@@ -9,6 +9,22 @@ DirectoryIndex index.php index.html
 # Without this, /photos/thumbs/ is a browsable index of every photo on the site.
 Options -Indexes
 
+# Security headers. The site sent none of these before: PHP fills the response on
+# a shared host, so Apache has to add them. HSTS is safe because the host already
+# redirects http to https.
+<IfModule mod_headers.c>
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  # Inline <script>/<style> are load-bearing here (the construction notice and
+  # the calendar's boot payload), so 'unsafe-inline' stays for both; the calendar
+  # library is the one external script and Instagram's CDN the one remote image
+  # source. Everything else is same-origin.
+  Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'"
+</IfModule>
+
 # Code, data and archive material, not pages. The first two live above this
 # directory on the server anyway -- includes/ is only reachable if it is deployed
 # here, and the data directory never is -- but a mistaken deploy should not be

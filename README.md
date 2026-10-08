@@ -3,7 +3,10 @@
 The club site: <https://usydastro.org>. Plain PHP on the society's Namecheap
 shared hosting account, served straight out of `public_html` by cPanel's Apache.
 
-There is nothing to build. Edit a file, run `./deploy.sh`, done. The old setup —
+There is nothing to build. Edit a file, commit and push, then `git pull` on the
+server, where `public_html` is a checkout of this repository; the host and account
+live in `DEPLOY.md` (kept out of the repository, because it holds credentials).
+`./deploy.sh`, the older rsync path, is retired. The setup before all of that —
 GitHub Pages, a Cloudflare Worker upload relay, a personal access token, a
 `submissions` branch and workflows that committed photos back into the repository
 — is gone, because PHP can accept an upload and a photo can simply be a file.
@@ -18,7 +21,7 @@ upload.php         where the form posts; validates and files the photos
 admin.php          sign in: promote a photo, send one back, delete either
 moderate.php       the remove control in the photo viewer
 home.php           /home redirect, kept for old links
-deploy.sh          rsync the site to the server
+deploy.sh          retired rsync deploy; the server pulls from git now
 includes/          bootstrap, the photo store, the events, the shared layout
 assets/            stylesheet, scripts, logos, committee photos
 photos/            the photographs (see below)
@@ -27,11 +30,13 @@ photos/            the photographs (see below)
 ## The calendar
 
 The home page's calendar is not scraped here. The Sydney Uni Canoe Club already
-mirrors our Instagram through narro.info, OCRs the date, venue and time off each
-event poster, and merges the result into their own outdoors cache on a Git cron
-every fifteen minutes. `includes/events.php` reads the astronomy events out of
-that published cache and shows them; the alternative was a second copy of the
-same scraper, kept by us, drifting from theirs.
+reads our Instagram the hard way — their own bridge opens the profile and each
+post in a logged-out browser (it replaced the narro.info mirror, which died with
+its subscription), OCRs the date, venue and time off each event poster, and
+merges the result into their outdoors cache on a Git cron every fifteen minutes.
+`includes/events.php` reads the astronomy events out of that published cache and
+shows them; the alternative was a second copy of the same scraper, kept by us,
+drifting from theirs.
 
 The cost is a dependency worth naming: `usydcanoeclub.org` is where those events
 come from. If it stops answering, the page keeps serving the last response it
@@ -39,6 +44,11 @@ got -- kept in the data directory beside `public_html`, refetched at most twice
 an hour -- so a blip is invisible and a permanent outage degrades to a stale
 calendar rather than an empty one. With no events at all, the section says so
 and points at Instagram and Facebook instead.
+
+That cache also carries the mirror's health — whether the last crawl succeeded
+and when it last read the profile — and the calendar shows a short warning when
+that read is failing or hours old, so a stale month is never passed off as the
+current one.
 
 The month grid is FullCalendar, loaded from a CDN, and is the only thing on the
 site that needs a library. It is listed per page in `index.php` rather than in
@@ -87,19 +97,18 @@ a branch of a public repository, whatever it intended.
 
 ## Deploying
 
+The server's `public_html` is a checkout of this repository on `main`, so a deploy
+is a push and a pull:
+
 ```bash
-./deploy.sh              # deploy
-./deploy.sh --dry-run    # show what would change
+git push origin main
+ssh -p <port> <user>@<host> 'cd public_html && git pull'
 ```
 
-It mirrors the pages, `includes/` and `assets/` exactly, and only ever *adds* to
-`photos/` — `--ignore-existing` — so deploying cannot delete the photographs
-people have sent in since the last one. That is why the photographs are not under
-`assets/`: that directory is mirrored, so a photo kept there would be deleted by
-the next deploy.
-
-The script expects an SSH key at `~/.ssh/suas_deploy`; its header explains how to
-create and authorise one, and how to override the host, port and key.
+The host, port and account are in `DEPLOY.md`, which is deliberately not
+committed. Nothing is mirrored from a working tree, so what is live is exactly
+what `main` says it is — which is also why `assets/` and `photos/` can no longer
+drift from the repository the way the rsync mirror allowed.
 
 ## Configuration
 

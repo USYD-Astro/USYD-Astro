@@ -23,6 +23,7 @@ declare(strict_types=1);
  * the upload form on it.
  */
 
+$page_origin = $page_origin ?? 'https://usydastro.org';
 $page_title = $page_title ?? 'SUAS';
 $page_og_title = $page_og_title ?? $page_title;
 $page_description = $page_description ?? '';
@@ -31,6 +32,17 @@ $hero_title = $hero_title ?? $page_title;
 $hero_credit = $hero_credit ?? '';
 $hero_image = $hero_image ?? '';
 $hero_slides = $hero_slides ?? false;
+
+/* og:url and the canonical have to be absolute, and so does og:image: a relative
+ * og:image is resolved against the consumer's own origin, not ours, so Facebook
+ * and every other unfurler was fetching a URL that does not exist. index.php is
+ * the directory index, so its canonical is the root rather than the filename. */
+$page_path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+$page_path = (string) preg_replace('~/index\.php$~', '/', $page_path);
+if ($page_path === '') {
+    $page_path = '/';
+}
+$page_url = $page_origin . $page_path;
 ?>
 <!doctype html>
 <html lang="en-AU">
@@ -44,7 +56,13 @@ $hero_slides = $hero_slides ?? false;
 <link rel="icon" href="assets/img/logo.png">
 <meta property="og:title" content="<?= e($page_og_title) ?>">
 <meta property="og:type" content="website">
-<meta property="og:image" content="assets/img/og-image.png">
+<meta property="og:url" content="<?= attr($page_url) ?>">
+<meta property="og:image" content="<?= attr($page_origin . '/assets/img/og-image.png') ?>">
+<?php if ($page_description !== ''): ?>
+<meta property="og:description" content="<?= e($page_description) ?>">
+<meta name="twitter:card" content="summary_large_image">
+<?php endif; ?>
+<link rel="canonical" href="<?= attr($page_url) ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;1,400&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">

@@ -22,7 +22,7 @@ require __DIR__ . '/includes/bootstrap.php';
 
 $page_title = 'SUAS | Sydney University Astronomy Society';
 $page_og_title = 'SUAS';
-$page_description = "Photo credit: Matthew D'Souza";
+$page_description = 'SUAS is the University of Sydney Astronomy Society: stargazing nights, astrophotography and social events, open to students and the public.';
 $nav_home = true;
 $hero_title = 'Sydney University Astronomy Society';
 // No $hero_credit here: the layout only renders that line when a page sets it,
@@ -150,6 +150,14 @@ require __DIR__ . '/includes/layout/header.php';
       <!-- The instruction to select something is only true of a calendar that
            has something on it. -->
       <p class="lede">Our stargazing nights, general meetings and social events.<?= $events === [] ? '' : ' Click on an event on the calendar for more info.' ?></p>
+
+<?php $events_health = astro_events_health(); ?>
+<?php if ($events !== [] && !empty($events_health['stale'])): ?>
+      <!-- The grid draws whatever the last good crawl produced, which may be out
+           of date because the mirror upstream is failing or silent. Saying so
+           beats a month that looks current when it is not. -->
+      <p class="calendar__stale">These dates may be out of date \u2014 we are having trouble reading our Instagram feed. Check <a href="https://instagram.com/usydastro/">Instagram</a> for the latest.</p>
+<?php endif; ?>
 
 <?php if ($events === []): ?>
       <!-- The list is empty when the upstream cache could not be read, which is
