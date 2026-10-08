@@ -18,6 +18,11 @@ suas-data/
 # A deploy key copied into the checkout, if anyone ever does that.
 *.pem
 
+# The deploy runbook holds the production SSH and cPanel credentials, so it lives
+# on the machines that deploy and nowhere else: never committed, never pushed.
+# The deploy procedure that can be published is in README.md.
+DEPLOY.md
+
 # OS / editor noise
 .DS_Store
 Thumbs.db

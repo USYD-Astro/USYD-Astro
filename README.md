@@ -19,10 +19,31 @@ admin.php          sign in: promote a photo, send one back, delete either
 moderate.php       the remove control in the photo viewer
 home.php           /home redirect, kept for old links
 deploy.sh          rsync the site to the server
-includes/          bootstrap, the photo store, the shared layout
+includes/          bootstrap, the photo store, the events, the shared layout
 assets/            stylesheet, scripts, logos, committee photos
 photos/            the photographs (see below)
 ```
+
+## The calendar
+
+The home page's calendar is not scraped here. The Sydney Uni Canoe Club already
+mirrors our Instagram through narro.info, OCRs the date, venue and time off each
+event poster, and merges the result into their own outdoors cache on a Git cron
+every fifteen minutes. `includes/events.php` reads the astronomy events out of
+that published cache and shows them; the alternative was a second copy of the
+same scraper, kept by us, drifting from theirs.
+
+The cost is a dependency worth naming: `usydcanoeclub.org` is where those events
+come from. If it stops answering, the page keeps serving the last response it
+got -- kept in the data directory beside `public_html`, refetched at most twice
+an hour -- so a blip is invisible and a permanent outage degrades to a stale
+calendar rather than an empty one. With no events at all, the section says so
+and points at Instagram and Facebook instead.
+
+The month grid is FullCalendar, loaded from a CDN, and is the only thing on the
+site that needs a library. It is listed per page in `index.php` rather than in
+the shared layout, so no other page pays for it. Without JavaScript the same
+events are listed under the same heading by `calendar_list_markup()`.
 
 ## Two collections, and why
 

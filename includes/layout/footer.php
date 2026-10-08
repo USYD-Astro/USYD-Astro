@@ -4,6 +4,10 @@ declare(strict_types=1);
 /**
  * Closes the layout opened by layout/header.php: the site footer, then the
  * page's scripts. Add per-page files to $page_scripts before including this.
+ *
+ * An entry is a path or an absolute URL, and they run in the order they are
+ * listed: a page that needs a library before its own script puts the library
+ * first. The order is the whole reason these are a list rather than a lookup.
  */
 
 $page_scripts = $page_scripts ?? [];

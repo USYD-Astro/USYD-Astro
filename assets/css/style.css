@@ -9,12 +9,16 @@
    ========================================================================== */
 
 :root {
+  /* The logo's own blue: the solid fill of assets/img/logo.png is exactly
+     this value, and it is the only blue the site uses. Buttons, links,
+     headings, focus rings and washes all resolve here, so there is no
+     second shade left to drift out of step with the logo. */
   --brand: #1a5dad;
-  --brand-dark: #144a8a;
   /* Dark theme: --paper is the page background, --surface the raised panels
-     that sit on it. --link is lightened from --brand because the brand blue
-     is far too dark to remain readable against black. */
-  --link: #8ab4f8;
+     that sit on it. --brand is much too dark to read as body copy against
+     black, so link text is deliberately quiet and the interaction states
+     below lift it with the translucent white used elsewhere in this file,
+     rather than with a second, lighter blue. */
   --ink: #e8eaed;
   --muted: #9aa0a6;
   --rule: #2c2c2e;
@@ -70,7 +74,7 @@ img {
 }
 
 a {
-  color: var(--link);
+  color: var(--brand);
 }
 
 h1,
@@ -180,7 +184,7 @@ p {
 }
 
 .nav a[aria-current="page"] {
-  color: var(--link);
+  color: var(--brand);
   font-weight: 500;
 }
 
@@ -207,7 +211,7 @@ p {
   justify-content: center;
   text-align: center;
   color: #fff;
-  background: var(--brand-dark);
+  background: var(--brand);
   overflow: hidden;
 }
 
@@ -263,12 +267,12 @@ p {
 /* The home page hero now crossfades through the event gallery photos
    instead of showing one static shot. The figures stack in a fixed-height
    band; each image covers it via object-fit and swaps with a long opacity
-   transition. The band keeps --brand-dark behind it, matching the original
-   hero treatment. With JS off, the first figure simply sits there still. */
+   transition. The band keeps --brand behind it, matching the original hero
+   treatment. With JS off, the first figure simply sits there still. */
 .hero__slides {
   position: absolute;
   inset: 0;
-  background: var(--brand-dark);
+  background: var(--brand);
   overflow: hidden;
   /* Keep the slides' own z-indexes (the crossfade's is-current) contained
      here, so they can never rise above .hero__inner's text. */
@@ -437,7 +441,7 @@ p {
 }
 
 .card h3 {
-  color: var(--link);
+  color: var(--brand);
 }
 
 .card p:last-child {
@@ -521,7 +525,7 @@ p {
 }
 
 .rail:focus-visible {
-  outline: 2px solid var(--link);
+  outline: 2px solid var(--brand);
   outline-offset: 4px;
 }
 
@@ -619,7 +623,7 @@ p {
 
 .rail__nav button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
-  border-color: var(--link);
+  border-color: var(--brand);
 }
 
 .rail__nav button:disabled {
@@ -694,89 +698,43 @@ p {
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* The administrator's remove control. Visually quiet on purpose: it is here
-   for the committee, not as a feature of the gallery, and it must never look
-   like something a visitor is being invited to press. */
-.lightbox__admin {
-  margin-top: 12px;
+/* The delete control. A plain button that opens the password prompt: the
+   password is what gates the deletion, so the button has nothing of its own to
+   hide behind, and it still must not read as something a visitor is being
+   invited to press. */
+.lightbox__delete-wrap {
+  margin-top: 14px;
 }
 
-.lightbox__remove {
+.lightbox__delete {
   font: inherit;
-  font-size: 0.78rem;
-  padding: 4px 10px;
-  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.82rem;
+  padding: 7px 14px;
+  color: rgba(255, 255, 255, 0.7);
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 4px;
   cursor: pointer;
 }
 
-.lightbox__remove:hover,
-.lightbox__remove:focus-visible {
+.lightbox__delete:hover,
+.lightbox__delete:focus-visible {
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.6);
+  border-color: #c62828;
+  background: rgba(198, 40, 40, 0.2);
 }
 
-.lightbox__remove[disabled] {
-  opacity: 0.6;
-  cursor: progress;
+/* What a deletion did, reported in the viewer that did it. It borrows the
+   .form-status colours and keeps out of the layout the rest of the time, which
+   is nearly all of the time. */
+.lightbox__status {
+  margin: 0;
+  max-width: min(720px, 92vw);
+  text-align: center;
 }
 
-/* The password field. Deliberately unremarkable: it is not checked by
-   anything, and it should not look like it is. */
-.lightbox__admin-fields {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 10px;
-}
-
-/* Without this the display above outranks the browser's own [hidden] rule, so
-   the fields stay on screen whatever the attribute says -- which left the
-   Admin button toggling aria-expanded with no visible effect at all. Same
-   reason .rail__nav needs the same line. */
-.lightbox__admin-fields[hidden] {
+.lightbox__status:empty {
   display: none;
-}
-
-.lightbox__admin-label {
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.lightbox__admin-input {
-  font: inherit;
-  font-size: 0.78rem;
-  width: 108px;
-  padding: 3px 6px;
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 4px;
-}
-
-.lightbox__admin-note {
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-/* Always present, so the remove button is reachable to be unlocked. Quiet on
-   purpose -- it is a way in for the committee, not something to advertise. */
-.lightbox__admin-reveal {
-  font: inherit;
-  font-size: 0.72rem;
-  padding: 2px 6px;
-  color: rgba(255, 255, 255, 0.4);
-  background: transparent;
-  border: 0;
-  border-bottom: 1px dotted rgba(255, 255, 255, 0.3);
-  cursor: pointer;
-}
-
-.lightbox__admin-reveal:hover,
-.lightbox__admin-reveal:focus-visible {
-  color: rgba(255, 255, 255, 0.75);
 }
 
 .lightbox__bar {
@@ -836,7 +794,7 @@ p {
 }
 
 .person .role {
-  color: var(--link);
+  color: var(--brand);
   font-family: var(--font-head);
   font-size: 0.86rem;
   text-transform: uppercase;
@@ -866,7 +824,7 @@ p {
 }
 
 .contact h3 {
-  color: var(--link);
+  color: var(--brand);
   font-size: 0.88rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
@@ -893,6 +851,162 @@ p {
   display: block;
 }
 
+/* ---------- calendar ----------------------------------------------------- */
+
+/* The month grid is FullCalendar, so what is themed here is the library's own
+   custom properties rather than its stylesheet. Everything the calendar draws
+   resolves through --fc-*, which is what lets one block of variables re-dress
+   the toolbar, the grid lines, today's cell and the event tiles at once.
+
+   The tiles keep the canoe club's treatment on purpose -- a whole-day bar with
+   the time read out in its title, filled rather than outlined -- but in this
+   site's blue on this site's dark surface, so an event tile is the same blue
+   as a button. */
+
+.calendar {
+  margin-top: 26px;
+  padding: 8px 18px 18px;
+}
+
+.calendar .fc {
+  --fc-border-color: var(--rule);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: var(--wash);
+  --fc-neutral-text-color: var(--muted);
+  /* Today is a wash of the brand rather than the library's yellow, which is
+     unreadable against the dark surface and fights the tiles for attention. */
+  --fc-today-bg-color: rgba(26, 93, 173, 0.22);
+  --fc-event-bg-color: var(--brand);
+  --fc-event-border-color: var(--brand);
+  --fc-event-text-color: #fff;
+  --fc-button-bg-color: var(--brand);
+  --fc-button-border-color: var(--brand);
+  --fc-button-text-color: #fff;
+  --fc-button-hover-bg-color: #1f6cc7;
+  --fc-button-hover-border-color: #1f6cc7;
+  --fc-button-active-bg-color: #154b8b;
+  --fc-button-active-border-color: #154b8b;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+/* The library sets its own font on each of these, which is what has to be
+   beaten for the calendar to be set in this site's type. */
+.calendar .fc-toolbar-title,
+.calendar .fc-col-header-cell-cushion,
+.calendar .fc-daygrid-day-number,
+.calendar .fc-event-title,
+.calendar .fc-event-time {
+  font-family: var(--font-head);
+}
+
+.calendar .fc-toolbar-title {
+  font-size: 1.25rem;
+  color: var(--ink);
+}
+
+.calendar .fc-col-header-cell-cushion {
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 0;
+}
+
+.calendar .fc-daygrid-day-number {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 6px 8px;
+}
+
+.calendar .fc-day-today .fc-daygrid-day-number {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.calendar .fc-daygrid-day-frame {
+  min-height: 74px;
+}
+
+/* The colour is stated here rather than left to the library's
+   --fc-event-text-color, because an event tile is an <a> and this file's plain
+   `a { color: var(--brand) }` outranks what the library puts on it -- which is
+   a brand-blue fill with brand-blue text on it, an invisible tile. */
+.calendar .fc-event {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: #fff;
+}
+
+/* An event that has been and gone. The calendar keeps a long history -- the
+   upstream snapshot is filtered only by the club's own retention window -- so
+   without this the month you land on is as loud as the months behind it. */
+.calendar .fc-event.calendar__event--past {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.calendar .fc-event-title {
+  white-space: normal;
+}
+
+/* The library's own focus ring is a box-shadow that is invisible here. */
+.calendar .fc-button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.calendar__list {
+  margin: 22px 0 0;
+  padding-left: 20px;
+}
+
+.calendar__list li {
+  margin-bottom: 8px;
+}
+
+.calendar__empty {
+  color: var(--muted);
+  margin-top: 22px;
+}
+
+/* ---------- event dialog ------------------------------------------------- */
+
+/* Same chrome as the upload dialog, sized for a paragraph and a poster. */
+.modal--event {
+  width: min(560px, 100% - 32px);
+}
+
+.modal--event .modal__body p {
+  margin: 0 0 14px;
+}
+
+.event__when {
+  font-family: var(--font-head);
+  color: var(--brand);
+}
+
+.event__notes {
+  color: var(--muted);
+}
+
+.event__poster {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 18px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+}
+
+/* A global `img { display: block }` above would otherwise reveal a hidden
+   poster, so the hidden state is stated for these too. */
+.event__poster[hidden] {
+  display: none;
+}
+
 /* ---------- photo submission form ---------------------------------------- */
 
 .submit-form {
@@ -913,6 +1027,7 @@ p {
 
 .field input[type="text"],
 .field input[type="email"],
+.field input[type="password"],
 .field textarea {
   width: 100%;
   font: inherit;
@@ -948,18 +1063,18 @@ p {
 
 .dropzone:hover,
 .dropzone.is-over {
-  border-color: var(--link);
+  border-color: var(--brand);
   color: var(--ink);
 }
 
 .dropzone.is-over {
-  background: rgba(138, 180, 248, 0.09);
+  background: rgba(26, 93, 173, 0.09);
 }
 
 /* The input is off-screen, so its focus ring has to appear on the label it
    belongs to instead. */
 .dropzone:focus-within {
-  outline: 2px solid var(--link);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 
@@ -996,7 +1111,7 @@ p {
 
 .field input:focus-visible,
 .field textarea:focus-visible {
-  outline: 2px solid var(--link);
+  outline: 2px solid var(--brand);
   outline-offset: 1px;
 }
 
@@ -1091,7 +1206,7 @@ p {
 .previews__remove:hover,
 .previews__remove:focus-visible {
   background: rgba(255, 255, 255, 0.08);
-  border-color: var(--link);
+  border-color: var(--brand);
   color: var(--ink);
 }
 
@@ -1107,14 +1222,17 @@ p {
   cursor: pointer;
 }
 
+/* There is no darker blue to move to either, so the hover lifts the fill with
+   the same translucent white the nav links use. The `background` shorthand in
+   .button--danger and .button--ghost below clears this image again, which is
+   what lets those variants keep their own hover treatments. */
 .button:hover,
 .button:focus-visible {
-  background: var(--brand-dark);
-  border-color: var(--brand-dark);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1));
 }
 
 .button--ghost {
-  color: var(--link);
+  color: var(--brand);
   background: none;
   border-color: var(--rule);
 }
@@ -1123,7 +1241,7 @@ p {
 .button--ghost:focus-visible {
   color: var(--ink);
   background: rgba(255, 255, 255, 0.08);
-  border-color: var(--link);
+  border-color: var(--brand);
 }
 
 .form-actions {
@@ -1167,6 +1285,26 @@ p {
   /* Opaque, so the panel on top of it can be the usual translucent surface
      without the page behind it showing through the form. */
   background: var(--paper);
+}
+
+/* The delete prompt reuses the upload dialog's chrome, but it asks for one
+   thing and has no business being as wide as a photo form. */
+.modal--prompt {
+  width: min(430px, 100% - 32px);
+}
+
+/* The line under the heading naming the photo, given room of its own so the
+   first field does not crowd it. */
+.modal--prompt .hint {
+  margin: 0 0 18px;
+}
+
+/* The confirm is disabled while the deletion is in flight, and it has to look
+   it: browsers leave an author-coloured button looking pressable when it is
+   not, which invites a second click on a request already gone. */
+.modal--prompt .button[disabled] {
+  opacity: 0.7;
+  cursor: progress;
 }
 
 .modal::backdrop {
@@ -1390,7 +1528,7 @@ p {
 }
 
 .admin__meta a {
-  color: var(--link);
+  color: var(--brand);
 }
 
 .admin__logout {
@@ -1546,7 +1684,7 @@ p {
 
 .socials--onlight a:hover,
 .socials--onlight a:focus {
-  background: var(--brand-dark);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3));
 }
 
 .usu {
@@ -1620,6 +1758,12 @@ p {
 
   .calendar-frame {
     height: 480px;
+  }
+
+  /* The month grid keeps its left and right insets tight here: the cells are
+     already narrow, and the padding is width the days cannot spare. */
+  .calendar {
+    padding: 6px 8px 12px;
   }
 
   .rail > * {

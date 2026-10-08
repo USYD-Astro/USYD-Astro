@@ -35,7 +35,7 @@ session_set_cookie_params([
 ]);
 session_start();
 
-$passwordHash = (string) config('admin_password_hash');
+$passwordHash = admin_password_hash();
 $message = '';
 $error = '';
 
@@ -65,7 +65,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $failures = (int) ($_SESSION['login_failures'] ?? 0);
         usleep($failures >= 5 ? 1500000 : 400000);
 
-        if ($passwordHash !== '' && password_verify((string) ($_POST['password'] ?? ''), $passwordHash)) {
+        if (admin_password_ok((string) ($_POST['password'] ?? ''))) {
             session_regenerate_id(true);
             $_SESSION['admin'] = true;
             $_SESSION['login_failures'] = 0;

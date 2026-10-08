@@ -25,9 +25,30 @@ $page_og_title = 'SUAS';
 $page_description = "Photo credit: Matthew D'Souza";
 $nav_home = true;
 $hero_title = 'Sydney University Astronomy Society';
-$hero_credit = 'Photos from our stargazing trips and events';
+// No $hero_credit here: the layout only renders that line when a page sets it,
+// and this one no longer wants a caption under the title. about.php still uses
+// it for its photographer's credit.
 $hero_slides = true;
-$page_scripts = ['assets/js/submit.js'];
+
+// The calendar is the one part of this page that needs a library, so it is the
+// one part that asks for one. FullCalendar is listed before its own script
+// because the footer emits these in order and the library has to be defined
+// before the script that calls into it. Every other page would only be made
+// heavier by either file, which is why they are here and not in the layout.
+//
+// There is no stylesheet to go with it: FullCalendar's global build carries its
+// own CSS in the script. The matching index.global.min.css does not exist in
+// the package, whatever the canoe club's own page links to.
+$page_scripts = [
+    'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js',
+    'assets/js/calendar.js',
+    'assets/js/submit.js',
+];
+
+// Read once, here, rather than inside the markup: the section, the grid's data
+// payload and the no-JavaScript list are three views of the same list, and this
+// is what keeps them from being three chances to fetch it.
+$events = astro_events();
 
 require __DIR__ . '/includes/layout/header.php';
 ?>
@@ -152,6 +173,34 @@ require __DIR__ . '/includes/layout/header.php';
     </div>
   </section>
 
+  <section class="section" id="calendar">
+    <div class="wrap">
+      <h2>Calendar:</h2>
+      <!-- The instruction to select something is only true of a calendar that
+           has something on it. -->
+      <p class="lede">Our stargazing nights, general meetings and social events.<?= $events === [] ? '' : ' Select an entry for the details.' ?></p>
+
+<?php if ($events === []): ?>
+      <!-- The list is empty when the upstream cache could not be read, which is
+           not something a visitor caused or can fix. Saying so plainly and
+           pointing at the two places the club actually posts beats an empty
+           month grid that looks broken. -->
+      <p class="calendar__empty">No dates are listed just now. Follow us on <a href="https://instagram.com/usydastro/">Instagram</a> or <a href="https://www.facebook.com/usydastronomy/">Facebook</a> for what is coming up.</p>
+<?php else: ?>
+      <div class="panel calendar">
+        <div class="calendar__grid" id="suas-calendar"></div>
+      </div>
+
+      <!-- The grid is JavaScript and nothing above needs it, so this is the
+           whole calendar for anyone without it. -->
+      <noscript>
+<?= calendar_list_markup($events) ?>
+
+      </noscript>
+<?php endif; ?>
+    </div>
+  </section>
+
   <section class="section section--banner" id="photos">
     <div class="wrap">
       <h2>Photo Gallery</h2>
@@ -227,5 +276,40 @@ require __DIR__ . '/includes/layout/header.php';
     </div>
   </div>
 </dialog>
+
+<?php if ($events !== []): ?>
+<!-- What the grid is drawn from. JSON_HEX_TAG is what makes this safe inside a
+     <script> element: without it a title containing "</script>" would end the
+     block and everything after it would be markup. -->
+<script type="application/json" id="suas-calendar-data"><?= json_encode(
+    $events,
+    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES
+) ?></script>
+
+<!-- Clicking a day's entry opens this. A native <dialog>, like the upload form,
+     so the backdrop, Escape and focus trapping come from the browser. The
+     contents are filled in by calendar.js from the data above. -->
+<dialog class="modal modal--event" id="event-modal" aria-labelledby="event-modal-title">
+  <div class="modal__panel">
+    <div class="modal__head">
+      <h2 id="event-modal-title"></h2>
+      <button type="button" class="modal__close" id="event-modal-close" aria-label="Close">&#10005;</button>
+    </div>
+
+    <div class="modal__body">
+      <p class="event__when" id="event-modal-when"></p>
+      <p class="event__place" id="event-modal-place" hidden></p>
+      <p class="event__notes" id="event-modal-notes" hidden></p>
+      <img class="event__poster" id="event-modal-poster" alt="" hidden>
+    </div>
+
+    <div class="modal__foot">
+      <div class="form-actions">
+        <a class="button" id="event-modal-link" href="" target="_blank" rel="noopener" hidden>See the post &rarr;</a>
+      </div>
+    </div>
+  </div>
+</dialog>
+<?php endif; ?>
 
 <?php require __DIR__ . '/includes/layout/footer.php'; ?>

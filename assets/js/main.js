@@ -124,6 +124,7 @@
   var lightbox = null;
   var pic = null;
   var meta = null;
+  var status = null;
   var index = 0;
 
   function register(list) {
@@ -153,11 +154,13 @@
       '<button type="button" data-act="close" aria-label="Close">&#10005;</button>' +
       "</div>" +
       '<img alt="">' +
-      '<div class="lightbox__meta"></div>';
+      '<div class="lightbox__meta"></div>' +
+      '<p class="form-status lightbox__status" role="status"></p>';
     document.body.appendChild(lightbox);
 
     pic = lightbox.querySelector("img");
     meta = lightbox.querySelector(".lightbox__meta");
+    status = lightbox.querySelector(".lightbox__status");
 
     lightbox.addEventListener("click", function (e) {
       var act = e.target.getAttribute && e.target.getAttribute("data-act");
@@ -186,20 +189,17 @@
     return line;
   }
 
-  /* ---- removing a photo ------------------------------------------------- */
-  /* The button a committee member uses to take a photo out of the gallery. It
-     posts to moderate.php on this site.
+  /* ---- deleting a photo -------------------------------------------------- */
+  /* The delete control in the photo viewer. An ordinary button: pressing it
+     opens the password prompt, and the password is what gates the deletion, so
+     the button has nothing of its own to hide behind.
 
-     The password box is now a real check. It used to be a speed bump that
-     nothing verified, because this was a static page and a password read here
-     would have been a string in every visitor's devtools -- so the page said so
-     rather than pretend. The endpoint is on this server and holds the hash, so
-     the password is sent over HTTPS and checked against it there, and the photo
-     is off the site as soon as the button is pressed rather than on the next
-     build.
-
-     HIDING THE BUTTON IS STILL NOT SECURITY. It is kept quiet because it is not
-     for visitors, not because anything depends on them not finding it. */
+     The password is checked on the server, by moderate.php, against the hash in
+     ~/suas-config.php. It is not in this file and never reaches the page as a
+     value: it goes up the wire once, over HTTPS, and is checked there. Anyone
+     who knows it can delete, and anyone who does not cannot -- one shared
+     password rather than an account each, which is the arrangement this site
+     wants. */
   var MODERATE = (function () {
     /* On <body> of every page: the remove control appears in the lightbox
        wherever a photo is opened, and the upload form that carried this
@@ -208,133 +208,235 @@
     return host ? host.dataset.moderateEndpoint : "";
   })();
 
-  function removeControl(thumb) {
-    var wrap = document.createElement("p");
-    wrap.className = "lightbox__admin";
+  /* The prompt is built on first use, like the lightbox: most visits never
+     open it. */
+  var prompt = null;
+  var promptLead = null;
+  var promptPassword = null;
+  var promptReason = null;
+  var promptStatus = null;
+  var promptConfirm = null;
+  var pendingThumb = null;
 
+  /* What the viewer says when it is still on screen to say it. */
+  function setLightboxStatus(message, ok) {
+    if (!status) {
+      return;
+    }
+    status.textContent = message || "";
+    status.className =
+      "form-status lightbox__status" +
+      (ok ? " form-status--ok" : " form-status--warn");
+  }
+
+  /* What the prompt says while it is open. Nothing succeeds in place here -- a
+     deletion closes it -- so this is only ever breaking bad news. */
+  function setPromptStatus(message) {
+    promptStatus.textContent = message || "";
+    promptStatus.className = "form-status form-status--warn";
+  }
+
+  function buildPrompt() {
+    prompt = document.createElement("dialog");
+    prompt.className = "modal modal--prompt";
+    prompt.setAttribute("aria-labelledby", "delete-title");
+    prompt.innerHTML =
+      '<div class="modal__panel">' +
+      '<div class="modal__head">' +
+      '<h2 id="delete-title">Delete this photo?</h2>' +
+      '<button type="button" class="modal__close" data-act="cancel" aria-label="Close">&#10005;</button>' +
+      "</div>" +
+      '<div class="modal__body">' +
+      '<p class="hint" data-part="lead"></p>' +
+      '<div class="field">' +
+      '<label for="delete-password">Password</label>' +
+      '<input type="password" id="delete-password" autocomplete="off" required>' +
+      "</div>" +
+      '<div class="field">' +
+      '<label for="delete-reason">Reason (optional)</label>' +
+      '<input type="text" id="delete-reason" maxlength="200">' +
+      "</div>" +
+      '<p class="form-status" data-part="status" role="status"></p>' +
+      "</div>" +
+      '<div class="modal__foot">' +
+      '<div class="form-actions">' +
+      '<button type="button" class="button button--danger button--lg" data-act="delete">Delete photo</button>' +
+      '<button type="button" class="button button--ghost button--lg" data-act="cancel">Cancel</button>' +
+      "</div>" +
+      "</div>" +
+      "</div>";
+    document.body.appendChild(prompt);
+
+    promptLead = prompt.querySelector('[data-part="lead"]');
+    promptPassword = prompt.querySelector("#delete-password");
+    promptReason = prompt.querySelector("#delete-reason");
+    promptStatus = prompt.querySelector('[data-part="status"]');
+    promptConfirm = prompt.querySelector('[data-act="delete"]');
+
+    prompt.addEventListener("click", function (e) {
+      var act = e.target.getAttribute && e.target.getAttribute("data-act");
+      if (act === "cancel") {
+        prompt.close();
+      } else if (act === "delete") {
+        sendDeletion();
+      }
+    });
+
+    /* Enter in a field deletes, the way a form would. Only in a field: the
+       buttons answer Enter themselves, and intercepting it here would turn
+       Enter on Cancel into a deletion. */
+    prompt.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target.tagName === "INPUT") {
+        e.preventDefault();
+        sendDeletion();
+      }
+    });
+
+    prompt.addEventListener("close", function () {
+      pendingThumb = null;
+      setPromptStatus("");
+    });
+  }
+
+  function openPrompt(thumb) {
+    if (!prompt) {
+      buildPrompt();
+    }
     var name = filenameFor(thumb);
     if (!name) {
-      /* A photo added to the rail from this page has no published name yet, so
-         there is nothing in the repository to remove. */
-      var none = document.createElement("span");
-      none.className = "lightbox__admin-note";
-      none.textContent = "This photo is not published yet.";
-      wrap.appendChild(none);
-      return wrap;
+      return;
+    }
+    pendingThumb = thumb;
+    promptLead.textContent =
+      name + " comes off the site now, along with its thumbnails. This cannot be undone.";
+    promptPassword.value = "";
+    promptReason.value = "";
+    setPromptStatus("");
+    promptConfirm.disabled = false;
+    promptConfirm.textContent = "Delete photo";
+    /* Native <dialog>: the backdrop, Escape and the focus trap are the
+       browser's, and the top layer puts it above the viewer behind it. */
+    prompt.showModal();
+    promptPassword.focus();
+  }
+
+  function sendDeletion() {
+    if (promptConfirm.disabled) {
+      return;
+    }
+    var name = filenameFor(pendingThumb);
+    if (!name) {
+      return;
+    }
+    if (!promptPassword.value) {
+      setPromptStatus("Enter the gallery password.");
+      promptPassword.focus();
+      return;
+    }
+    if (!MODERATE) {
+      setPromptStatus("Deleting is not configured on this site.");
+      return;
     }
 
-    /* Always present, so the remove button is reachable to be revealed.
-       Quiet on purpose -- a way in for the committee, not something to
-       advertise. */
-    var reveal = document.createElement("button");
-    reveal.type = "button";
-    reveal.className = "lightbox__admin-reveal";
-    reveal.textContent = "Admin";
-    reveal.setAttribute("aria-expanded", "false");
+    promptConfirm.disabled = true;
+    promptConfirm.textContent = "Deleting…";
+    setPromptStatus("");
+
+    fetch(MODERATE, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      /* The password travels with the request and nowhere else: moderate.php
+         holds the hash and is the only thing that can check it, which is why
+         this is a file on our own server rather than something the page can
+         talk to without a credential. */
+      body: JSON.stringify({
+        filename: name,
+        reason: promptReason.value,
+        password: promptPassword.value,
+      }),
+    })
+      .then(function (response) {
+        return response.json().then(
+          function (data) {
+            return { ok: response.ok, data: data };
+          },
+          function () {
+            /* A non-JSON answer is a proxy or server error page, not a verdict
+               from moderate.php. */
+            return { ok: false, data: null };
+          }
+        );
+      })
+      .then(function (result) {
+        if (result.ok && result.data && result.data.ok) {
+          afterDeletion(pendingThumb, result.data.message);
+          return;
+        }
+        setPromptStatus(
+          (result.data && result.data.error) || "That photo was not deleted."
+        );
+        promptConfirm.disabled = false;
+        promptConfirm.textContent = "Delete photo";
+      })
+      .catch(function () {
+        setPromptStatus("We could not reach the server. Is the site online?");
+        promptConfirm.disabled = false;
+        promptConfirm.textContent = "Delete photo";
+      });
+  }
+
+  /* The photo is off the site by the time this runs, so the page is brought
+     into line with that: the tile goes, and the viewer moves on to whichever
+     photo took its place. */
+  function afterDeletion(thumb, message) {
+    var at = thumbs.indexOf(thumb);
+    if (at !== -1) {
+      thumbs.splice(at, 1);
+    }
+    var tile = thumb.parentElement;
+    if (tile && tile.parentNode) {
+      tile.parentNode.removeChild(tile);
+    }
+    prompt.close();
+
+    if (!thumbs.length) {
+      /* Nothing left to look at, so there is no viewer to report in. The home
+         page's rail carries a status line of its own. */
+      hide();
+      announce(message);
+      return;
+    }
+    show(at === -1 || at >= thumbs.length ? 0 : at);
+    setLightboxStatus(message, true);
+  }
+
+  /* For the one case the viewer cannot report in itself: the last photo on the
+     page having just gone. */
+  function announce(message) {
+    var note = document.getElementById("rail-note");
+    if (!note) {
+      window.alert(message);
+      return;
+    }
+    note.textContent = message;
+    note.hidden = false;
+  }
+
+  /* The button itself. Only a published photo offers one: a tile the submitter
+     is still looking at has no stored copy to take down. */
+  function removeControl(thumb) {
+    var wrap = document.createElement("p");
+    wrap.className = "lightbox__delete-wrap";
 
     var button = document.createElement("button");
     button.type = "button";
-    button.className = "lightbox__remove";
-    button.textContent = "Remove from gallery";
-    button.hidden = true;
-
-    var fields = document.createElement("span");
-    fields.className = "lightbox__admin-fields";
-    fields.hidden = true;
-
-    var label = document.createElement("label");
-    label.className = "lightbox__admin-label";
-    label.textContent = "Password";
-    var input = document.createElement("input");
-    input.type = "password";
-    input.className = "lightbox__admin-input";
-    input.autocomplete = "off";
-    /* The password this site is administered with. It is checked on the server,
-       so it is the same one the admin page takes. */
-    input.title = "The gallery password.";
-    label.appendChild(input);
-    fields.appendChild(label);
-
-    reveal.addEventListener("click", function () {
-      fields.hidden = !fields.hidden;
-      reveal.setAttribute("aria-expanded", fields.hidden ? "false" : "true");
-      if (!fields.hidden) {
-        input.focus();
-      }
-    });
-
+    button.className = "lightbox__delete";
+    button.textContent = "Delete photo";
     button.addEventListener("click", function () {
-      if (button.disabled) {
-        return;
-      }
-      if (!input.value) {
-        input.focus();
-        return;
-      }
-      if (!MODERATE) {
-        window.alert("Removal is not configured on this site.");
-        return;
-      }
-      var reason = window.prompt(
-        "Why is this photo being removed? This is recorded with the removal.",
-        ""
-      );
-      if (reason === null) {
-        return;
-      }
-      button.disabled = true;
-      button.textContent = "…";
-      fetch(MODERATE, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        /* The password goes with it: moderate.php holds the hash and checks it,
-           which is the whole reason this endpoint is a file on our own server
-           rather than something the page can talk to without a credential. */
-        body: JSON.stringify({
-          filename: name,
-          reason: reason,
-          password: input.value,
-        }),
-      })
-        .then(function (response) {
-          return response.json().then(
-            function (data) {
-              return { ok: response.ok, data: data };
-            },
-            function () {
-              /* A non-JSON answer is a proxy or server error page, not a
-                 verdict from moderate.php. */
-              return { ok: false, data: null };
-            }
-          );
-        })
-        .then(function (result) {
-          if (result.ok && result.data && result.data.ok) {
-            /* The photo is off the site already, so this is the end of the view
-               rather than something to go back from. */
-            hide();
-            window.alert(
-              (result.data && result.data.message) ||
-                "That photo is on its way off the site."
-            );
-            return;
-          }
-          window.alert(
-            (result.data && result.data.error) || "The removal did not work."
-          );
-          button.disabled = false;
-          button.textContent = "Remove from gallery";
-        })
-        .catch(function () {
-          button.disabled = false;
-          button.textContent = "Remove from gallery";
-          window.alert("We could not reach the server. Is the site online?");
-        });
+      openPrompt(thumb);
     });
 
-    wrap.appendChild(reveal);
-    wrap.appendChild(fields);
-    fields.appendChild(button);
+    wrap.appendChild(button);
     return wrap;
   }
 
@@ -374,6 +476,7 @@
     pic.alt = thumb.alt || "";
 
     meta.innerHTML = "";
+    setLightboxStatus("");
     if (data.credit) {
       meta.appendChild(detail(data.credit, "lightbox__credit"));
     }
@@ -405,6 +508,12 @@
 
   document.addEventListener("keydown", function (e) {
     if (!lightbox || !lightbox.classList.contains("is-open")) {
+      return;
+    }
+    /* The prompt is a dialog of its own: while it is open, Escape belongs to it
+       rather than to the viewer behind it, and the arrow keys belong to
+       whatever is being typed into it. */
+    if (prompt && prompt.open) {
       return;
     }
     if (e.key === "Escape") {

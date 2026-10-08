@@ -40,6 +40,7 @@ define('GALLERY_ALT', 'Photo from a previous SUAS event');
 define('QUEUE_ALT', 'Photo sent in by a SUAS member');
 
 require_once __DIR__ . '/photos.php';
+require_once __DIR__ . '/events.php';
 
 /**
  * Set SUAS_CONFIG to point at another config file, e.g. for a local preview.
@@ -63,6 +64,30 @@ $GLOBALS['suas_config'] = array_merge(
 function config(string $key): mixed
 {
     return $GLOBALS['suas_config'][$key] ?? null;
+}
+
+/**
+ * The hash the site's password is verified against, or '' when none is set.
+ *
+ * '' is not "accept anything": every caller reads it as "nothing can be
+ * administered here", which is what a checkout without ~/suas-config.php gets.
+ */
+function admin_password_hash(): string
+{
+    return (string) config('admin_password_hash');
+}
+
+/**
+ * Whether $password is the site's password.
+ *
+ * One password, checked in one place. The sign-in on the admin page and the
+ * delete control in the photo viewer both come through here, so the two cannot
+ * drift apart into different passwords.
+ */
+function admin_password_ok(string $password): bool
+{
+    $hash = admin_password_hash();
+    return $hash !== '' && password_verify($password, $hash);
 }
 
 /**

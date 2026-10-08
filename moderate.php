@@ -39,8 +39,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     moderate_answer(false, 'Removals have to be posted.', 405);
 }
 
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if ($origin !== '' && parse_url($origin, PHP_URL_HOST) !== (string) ($_SERVER['HTTP_HOST'] ?? '')) {
+/* Host against host, with the port stripped from ours.
+
+   HTTP_HOST carries a port whenever the site is served on anything other than
+   80/443 and Origin never does, so comparing the two raw rejected the site's
+   own requests the moment it was opened anywhere but production -- including
+   every local preview. */
+$origin = (string) ($_SERVER['HTTP_ORIGIN'] ?? '');
+$requestHost = (string) parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST);
+if ($origin !== '' && strcasecmp((string) parse_url($origin, PHP_URL_HOST), $requestHost) !== 0) {
     moderate_answer(false, 'This has to be sent from the SUAS site itself.', 403);
 }
 
@@ -57,11 +64,16 @@ if ($file === '' || !preg_match('/^\d{2,}\.[A-Za-z0-9]+$/', $file)) {
     moderate_answer(false, 'That is not a photo this site stores.', 400);
 }
 
-$passwordHash = (string) config('admin_password_hash');
+/* A site with no password set has nothing to check against, and "that password
+   was not right" would be a lie about a request that could never have worked.
+   Refuse, and say which of the two it is. */
+if (admin_password_hash() === '') {
+    moderate_answer(false, 'Deleting has not been set up on this site yet.', 503);
+}
 
 /* Check the password before saying anything about the photo, so a wrong password
    cannot be used to find out which filenames exist. */
-if ($passwordHash === '' || !password_verify($password, $passwordHash)) {
+if (!admin_password_ok($password)) {
     usleep(500000); // slows guessing down; shared hosting has no fail2ban to lean on
     moderate_answer(false, 'That password was not right.', 403);
 }
