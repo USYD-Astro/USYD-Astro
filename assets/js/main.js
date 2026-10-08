@@ -14,49 +14,6 @@
     });
   }
 
-  /* ---- under-construction notice ---------------------------------------- */
-  /* The notice is in the markup of every page and is visible whether or not
-     this script runs. The inline script in the head turns it into a modal when
-     scripting is available, and hides it again for the rest of the session if
-     it has already been dismissed; all that is left to do here is the
-     dismissing. It sits above the lightbox below, which has to build itself
-     before it can be asked anything. */
-  var construction = document.getElementById("construction");
-  var constructionDismiss = document.getElementById("construction-dismiss");
-  var constructionShown = function () {
-    return document.documentElement.classList.contains("js")
-      && !document.documentElement.classList.contains("construction-dismissed");
-  };
-
-  if (construction && constructionDismiss) {
-    /* Only claim focus and the scrollbar if the notice is actually in front of
-       the visitor: with it already dismissed for this session, and no modal on
-       screen, locking scrolling here would strand every later page. */
-    if (constructionShown()) {
-      constructionDismiss.focus();
-      document.body.style.overflow = "hidden";
-    }
-
-    var dismissConstruction = function () {
-      document.documentElement.classList.add("construction-dismissed");
-      document.body.style.overflow = "";
-      try {
-        sessionStorage.setItem("suas-construction-dismissed", "1");
-      } catch (error) {
-        /* Storage unavailable: the notice simply returns on the next page. */
-      }
-      constructionDismiss.blur();
-    };
-
-    constructionDismiss.addEventListener("click", dismissConstruction);
-
-    document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape" && constructionShown()) {
-        dismissConstruction();
-      }
-    });
-  }
-
   /* ---- hero slideshow ---------------------------------------------------- */
   /* The band at the top of the home page crossfades through the gallery
      photos. The first slide is server-rendered as is-current, so the band
