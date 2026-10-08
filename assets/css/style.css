@@ -941,11 +941,14 @@ p {
 
 /* An event that has been and gone. The calendar keeps a long history -- the
    upstream snapshot is filtered only by the club's own retention window -- so
-   without this the month you land on is as loud as the months behind it. */
+   the month you land on would otherwise be as loud as the months behind it.
+   The difference is carried by the text, not the fill: a translucent fill let
+   the page backdrop through the tile, which read as washed out rather than
+   filled. Every tile is solid club blue, past or future. */
 .calendar .fc-event.calendar__event--past {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: transparent;
-  color: var(--muted);
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #cdddf3;
 }
 
 .calendar .fc-event-title {
@@ -956,6 +959,18 @@ p {
 .calendar .fc-button:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
+}
+
+/* A disabled button is faded to 0.65 by the library, which over this backdrop
+   reads as a washed-out block rather than a button -- and "today" is disabled
+   whenever the grid already shows the current month, which is most of the
+   time. Keep the fill solid club blue, the same as every other button, and let
+   the cursor say it cannot be pressed. */
+.calendar .fc-button:disabled {
+  opacity: 1;
+  background: var(--brand);
+  border-color: var(--brand);
+  cursor: default;
 }
 
 .calendar__list {
