@@ -42,8 +42,9 @@
 
   /* Read fields by id rather than form.<name>: HTMLFormElement has its own
      `name` property, so form.name is the form's name attribute rather than
-     the input called "name". */
-  var input = document.getElementById("photos");
+     the input called "name". The file input is not called "photos": that id
+     is the gallery section's, and two elements cannot share one. */
+  var input = document.getElementById("photo-files");
   var dropzone = document.getElementById("dropzone");
   var previews = document.getElementById("previews");
   var statusLine = document.getElementById("status");

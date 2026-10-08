@@ -239,10 +239,10 @@ require __DIR__ . '/includes/layout/header.php';
            and screen-reader paths working, and what lets the label light up
            when the input has focus. submit.js adds the dragging half of the
            gesture. -->
-      <label class="dropzone" id="dropzone" for="photos">
+      <label class="dropzone" id="dropzone" for="photo-files">
         <svg class="dropzone__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 15.2a3.2 3.2 0 0 1-3.2-3.2A3.2 3.2 0 0 1 12 8.8a3.2 3.2 0 0 1 3.2 3.2 3.2 3.2 0 0 1-3.2 3.2M9 2 7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9m3 5c2.76 0 5 2.24 5 5s-2.24 5-5 5-5-2.24-5-5 2.24-5 5-5z"/></svg>
         <span class="dropzone__text">Drag photos here, or click to choose</span>
-        <input class="sr-only" type="file" id="photos" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple aria-label="Photos">
+        <input class="sr-only" type="file" id="photo-files" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple aria-label="Photos">
       </label>
 
       <ul class="previews" id="previews" aria-live="polite"></ul>
