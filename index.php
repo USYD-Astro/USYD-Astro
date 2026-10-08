@@ -146,33 +146,6 @@ require __DIR__ . '/includes/layout/header.php';
     </div>
   </section>
 
-  <section class="section" id="join">
-    <div class="wrap">
-      <h2>Become a member</h2>
-      <p class="lede">Membership is open to all University of Sydney students. Signing up gets you onto our mailing list so you hear about stargazing trips, camping trips and on-campus events before they fill up.</p>
-
-      <div class="cards">
-        <article class="card">
-          <h3>Join online</h3>
-          <p>The quickest way to join is through the University of Sydney Union club page, which handles membership and payments.</p>
-          <p><a href="https://usu.edu.au/clubs/suas">Join via the USU club page &rarr;</a></p>
-        </article>
-
-        <article class="card">
-          <h3>Come to a meeting</h3>
-          <p>No experience needed. Come along to one of our general meetings, or just turn up to a stargazing night and say hello.</p>
-          <p><a href="https://www.facebook.com/usydastronomy/">See upcoming events on Facebook &rarr;</a></p>
-        </article>
-
-        <article class="card">
-          <h3>Questions?</h3>
-          <p>Email us and we&rsquo;ll help you get sorted, including arranging transport to trips.</p>
-          <p><a href="mailto:usydastronomy@gmail.com">usydastronomy@gmail.com</a></p>
-        </article>
-      </div>
-    </div>
-  </section>
-
   <section class="section" id="calendar">
     <div class="wrap">
       <h2>Calendar:</h2>
@@ -198,6 +171,35 @@ require __DIR__ . '/includes/layout/header.php';
 
       </noscript>
 <?php endif; ?>
+    </div>
+  </section>
+
+  <!-- Membership sits after the calendar rather than among the activity
+       sections: the calendar is what makes a visitor decide to join, so the
+       invitation follows the dates rather than preceding them. -->
+  <section class="section" id="join">
+    <div class="wrap">
+      <h2>Become a member</h2>
+      <p class="lede">Membership is open to all University of Sydney students. Signing up gets you onto our mailing list so you hear about stargazing trips, camping trips and on-campus events before they fill up.</p>
+
+      <div class="cards">
+        <article class="card">
+          <h3>Join online</h3>
+          <p>The quickest way to join is through the University of Sydney Union club page, which handles membership and payments.</p>
+          <p><a href="https://usu.edu.au/clubs/suas">Join via the USU club page &rarr;</a></p>
+        </article>
+
+        <article class="card">
+          <h3>Come to a meeting</h3>
+          <p>No experience needed. Come along to one of our general meetings, or just turn up to a stargazing night and say hello.</p>
+        </article>
+
+        <article class="card">
+          <h3>Questions?</h3>
+          <p>Email us and we&rsquo;ll help you get sorted, including arranging transport to trips.</p>
+          <p><a href="mailto:usydastronomy@gmail.com">usydastronomy@gmail.com</a></p>
+        </article>
+      </div>
     </div>
   </section>
 
