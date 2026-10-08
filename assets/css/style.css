@@ -57,13 +57,15 @@ body {
    now backs the whole site. It is pinned to the viewport with a fixed layer
    rather than `background-attachment: fixed`, which iOS Safari ignores, so
    the page content scrolls over a still image. The gradient scrim keeps body
-   copy readable wherever it lands. */
+   copy readable wherever it lands, and a flat black shade sits over the lot,
+   taking the whole backdrop down to 76% of its brightness (24% darker). */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
+    linear-gradient(rgba(0, 0, 0, 0.24), rgba(0, 0, 0, 0.24)),
     linear-gradient(rgba(4, 8, 14, 0.58), rgba(4, 8, 14, 0.7)),
     url("../img/events-banner.jpg") center / cover no-repeat;
 }
