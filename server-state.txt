@@ -3,7 +3,7 @@
 #
 # The live checkout on the server (~/public_html, a git checkout of origin/main)
 # and the live site at https://usydastro.org/ both stand at:
-LIVE_SERVER_GIT_REV=d352c711fa3816ce3c1ddcc3438c35f2a4b315bc
+LIVE_SERVER_GIT_REV=d9369031fe63c4c92a164bb3c57549e47e2be6c9
 #
 # This file's own commit is bookkeeping on top of that rev, so it is one commit
 # ahead of what it records; the authoritative marker is the server's
