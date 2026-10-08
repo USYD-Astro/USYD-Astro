@@ -105,7 +105,6 @@ require __DIR__ . '/includes/layout/header.php';
   <section class="section">
     <div class="wrap">
       <h2>Stargazing Trips</h2>
-      <p class="lede">We organise trips out of Sydney to get to areas of low light pollution, giving you the best conditions for stargazing. There are two kinds of trips we organise: single night trips, and camping trips.</p>
 
       <div class="cards">
         <article class="card">
@@ -125,7 +124,6 @@ require __DIR__ . '/includes/layout/header.php';
   <section class="section">
     <div class="wrap">
       <h2>On Campus Events</h2>
-      <p class="lede">Long car rides and camping at late hours not your idea of fun? Don&rsquo;t worry, we also hold events so that you can enjoy astronomy from the comfort of the university.</p>
 
       <div class="cards">
         <article class="card">
@@ -151,7 +149,7 @@ require __DIR__ . '/includes/layout/header.php';
       <h2>Calendar:</h2>
       <!-- The instruction to select something is only true of a calendar that
            has something on it. -->
-      <p class="lede">Our stargazing nights, general meetings and social events.<?= $events === [] ? '' : ' Select an entry for the details.' ?></p>
+      <p class="lede">Our stargazing nights, general meetings and social events.<?= $events === [] ? '' : ' Click on an event on the calendar for more info.' ?></p>
 
 <?php if ($events === []): ?>
       <!-- The list is empty when the upstream cache could not be read, which is
@@ -180,7 +178,6 @@ require __DIR__ . '/includes/layout/header.php';
   <section class="section" id="join">
     <div class="wrap">
       <h2>Become a member</h2>
-      <p class="lede">Membership is open to all University of Sydney students. Signing up gets you onto our mailing list so you hear about stargazing trips, camping trips and on-campus events before they fill up.</p>
 
       <div class="cards">
         <article class="card">
