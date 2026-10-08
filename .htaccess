@@ -21,8 +21,9 @@ Options -Indexes
   # Inline <script>/<style> are load-bearing here (the construction notice and
   # the calendar's boot payload), so 'unsafe-inline' stays for both; the calendar
   # library is the one external script and Instagram's CDN the one remote image
-  # source. Everything else is same-origin.
-  Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'"
+  # source. font-src needs data: because FullCalendar embeds its icon font as a
+  # data: URI. Everything else is same-origin.
+  Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'"
 </IfModule>
 
 # Code, data and archive material, not pages. The first two live above this
