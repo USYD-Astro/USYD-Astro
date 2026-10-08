@@ -323,7 +323,7 @@ p {
 /* ---------- generic sections -------------------------------------------- */
 
 .section {
-  padding: 56px 0;
+  padding: 36.4px 0;
 }
 
 .section--wash {
@@ -331,7 +331,7 @@ p {
 }
 
 /* A section that directly continues the one above it, rather than starting a
-   new topic. Two stacked sections carry 56px of padding on each side of the
+   new topic. Two stacked sections carry 36.4px of padding on each side of the
    join, which reads as a deliberate break; here the join is a line of prose
    and nothing more.
 
@@ -345,7 +345,7 @@ p {
 /* The other side of that same join, and the same reason for the doubled
    class. */
 .section.section--intro {
-  padding-bottom: 18px;
+  padding-bottom: 11.7px;
 }
 
 /* The gallery band's own photo moved to the fixed page backdrop (see
@@ -1743,7 +1743,7 @@ p {
   }
 
   .section {
-    padding: 40px 0;
+    padding: 26px 0;
   }
 
   .site-foot__inner {
