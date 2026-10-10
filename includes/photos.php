@@ -218,8 +218,8 @@ function photo_gallery_markup(array $photos): string
 function photo_rail_markup(array $photos): string
 {
     if ($photos === []) {
-        return '        <p class="rail__empty">Nothing has been sent in yet &mdash; yours could be '
-            . 'the first. Use the button above to add your photos to this gallery.</p>';
+        return '        <p class="rail__empty">Nothing has been sent in yet, yours could be '
+            . 'the first! Use the button above to add your photos to this gallery.</p>';
     }
 
     $lines = [];
