@@ -7,14 +7,17 @@ declare(strict_types=1);
  * There is no manifest any more. A photo is a file, and which collection its
  * directory puts it in is what it means:
  *
- *   photos/        the home page gallery, curated by hand
- *   photos/queue/  sent in through the form, waiting to be reviewed
+ *   photos/                the home page gallery, curated by hand, which also
+ *                          feeds the hero slideshow
+ *   photos/submissions/    sent in through the form and accepted: the strip on
+ *                          the home page, and as far as a submission goes
+ *   photos/queue/          sent in through the form, waiting to be reviewed
  *
- * Promoting a photo -- the admin page's "accept" -- moves the file from one
- * directory to the other and gives it a hero slide, because only the home page
- * gallery feeds the slideshow. That replaces moving an entry between two YAML
- * files and regenerating markup, and it means the two collections cannot
- * disagree with what is actually published.
+ * Accepting a photo moves the file from the queue to submissions and no
+ * further, so a member's photo reaches the strip and not the curated gallery or
+ * the slideshow. That replaces moving an entry between two YAML files and
+ * regenerating markup, and it means the collections cannot disagree with what is
+ * actually published.
  *
  * The queue is private. Nothing here renders it as a public block, .htaccess
  * refuses photos/queue/ outright, and the review page reads it through PHP: a
@@ -31,11 +34,6 @@ function photo_suffixes(): array
     return ['jpg', 'jpeg', 'png', 'webp'];
 }
 
-function photo_is_queued(string $file): bool
-{
-    return is_file(QUEUE_DIR . '/' . basename($file));
-}
-
 /**
  * Where a collection keeps its files.
  *
@@ -46,6 +44,9 @@ function photo_dirs(string $collection): array
 {
     if ($collection === 'queue') {
         return ['dir' => QUEUE_DIR, 'thumbs' => QUEUE_THUMBS, 'slides' => ''];
+    }
+    if ($collection === 'submissions') {
+        return ['dir' => SUBMISSIONS_DIR, 'thumbs' => SUBMISSIONS_THUMBS, 'slides' => ''];
     }
     return ['dir' => GALLERY_DIR, 'thumbs' => GALLERY_THUMBS, 'slides' => GALLERY_SLIDES];
 }
@@ -69,14 +70,22 @@ function photo_slide_path(string $file): string
 
 function photo_full_url(string $collection, string $file): string
 {
-    $prefix = $collection === 'queue' ? 'photos/queue/' : 'photos/';
-    return $prefix . basename($file);
+    return photo_dir_prefix($collection) . basename($file);
 }
 
 function photo_thumb_url(string $collection, string $file): string
 {
-    $prefix = $collection === 'queue' ? 'photos/queue/thumbs/' : 'photos/thumbs/';
-    return $prefix . basename(photo_thumb_path($collection, $file));
+    return photo_dir_prefix($collection) . 'thumbs/' . basename(photo_thumb_path($collection, $file));
+}
+
+/** The URL each collection is served from, which decides what a visitor can reach. */
+function photo_dir_prefix(string $collection): string
+{
+    return match ($collection) {
+        'queue' => 'photos/queue/',
+        'submissions' => 'photos/submissions/',
+        default => 'photos/',
+    };
 }
 
 function photo_slide_url(string $file): string
@@ -141,7 +150,11 @@ function photo_all(string $collection = 'gallery'): array
         return [];
     }
     $metadata = photo_metadata()['photos'];
-    $defaultAlt = $collection === 'queue' ? QUEUE_ALT : GALLERY_ALT;
+    $defaultAlt = match ($collection) {
+        'queue' => QUEUE_ALT,
+        'submissions' => SUBMISSIONS_ALT,
+        default => GALLERY_ALT,
+    };
     $photos = [];
 
     foreach (scandir($dirs['dir']) as $name) {
@@ -179,7 +192,9 @@ function photo_all(string $collection = 'gallery'): array
 function photo_find(string $file): ?array
 {
     $wanted = basename($file);
-    foreach (['gallery', 'queue'] as $collection) {
+    /* Numbers are never handed out twice, so a filename belongs to exactly one
+       of these; the order only decides which is looked at first. */
+    foreach (['gallery', 'submissions', 'queue'] as $collection) {
         foreach (photo_all($collection) as $photo) {
             if ($photo['file'] === $wanted) {
                 return $photo;
@@ -212,10 +227,41 @@ function photo_gallery_markup(array $photos): string
     return implode("\n", $lines);
 }
 
-/* There is no queue markup function. The rail that showed photos as they came in
-   was removed with the public rail itself -- see index.php -- and the review page
-   builds its own list, because the one thing a queued photo needs is an accept
-   and a reject button beside it. */
+/**
+ * The strip of photos people have sent in, as it appears on the home page.
+ *
+ * Only accepted photos are here. A submission still waiting for review is not
+ * rendered anywhere, and the review page builds its own list because the one
+ * thing a queued photo needs is an accept and a reject button beside it.
+ *
+ * The credit, caption and date travel as data attributes on the image the
+ * lightbox opens, which is how the expanded view can show who sent a photo and
+ * what they said about it without anything being fetched separately.
+ */
+function photo_submissions_markup(array $photos): string
+{
+    if ($photos === []) {
+        return '        <p class="submissions__empty">Nothing has been sent in yet, yours could be '
+            . 'the first! Use the button above to add your photos to this gallery.</p>';
+    }
+
+    $lines = [];
+    foreach ($photos as $photo) {
+        $bits = [
+            sprintf('src="%s"', attr(photo_thumb_url('submissions', $photo['file']))),
+            sprintf('data-full="%s"', attr(photo_full_url('submissions', $photo['file']))),
+        ];
+        foreach (['credit', 'caption', 'date'] as $key) {
+            if ($photo[$key] !== '') {
+                $bits[] = sprintf('data-%s="%s"', $key, attr($photo[$key]));
+            }
+        }
+        $bits[] = sprintf('alt="%s"', attr($photo['alt']));
+        $lines[] = '        <button type="button" class="submissions__item"><img '
+            . implode(' ', $bits) . '></button>';
+    }
+    return implode("\n", $lines);
+}
 
 /**
  * The hero band's crossfading slides, one figure per curated photo.
@@ -403,7 +449,10 @@ function photo_reserve_number(array &$metadata): int
         // files sharing a number would share one thumbnail as well.
         foreach (photo_suffixes() as $suffix) {
             $name = sprintf('%02d.%s', $n, $suffix);
-            if (is_file(GALLERY_DIR . '/' . $name) || is_file(QUEUE_DIR . '/' . $name)) {
+            if (is_file(GALLERY_DIR . '/' . $name)
+                || is_file(SUBMISSIONS_DIR . '/' . $name)
+                || is_file(QUEUE_DIR . '/' . $name)
+            ) {
                 return true;
             }
         }
@@ -460,12 +509,42 @@ function photo_add_to_queue(string $sourcePath, array $meta): array
 }
 
 /**
- * Promote a queued photo onto the home page: move it, and build its hero slide.
+ * Accept a submitted photo: move it out of the private queue and into the strip
+ * of what people have sent in, which is part of the home page.
  *
- * This is what "someone moves its entry there by hand" means now. Both files
- * move, so the pending list stops offering it and the gallery starts, and the
- * slide is derived from the already-scrubbed stored copy rather than from the
- * original upload, which no longer exists anywhere.
+ * There is no hero slide and no gallery: the strip is where a submission goes
+ * and where it stays. A member's photo therefore reaches the page the moment a
+ * committee member accepts it, and reaches the slideshow only if somebody later
+ * chooses to curate it by hand.
+ */
+function photo_accept(string $file): bool
+{
+    return photo_with_lock(function () use ($file): bool {
+        $file = basename($file);
+        $from = photo_path('queue', $file);
+        if (!is_file($from)) {
+            return false;
+        }
+        if (!is_dir(SUBMISSIONS_DIR)) {
+            mkdir(SUBMISSIONS_DIR, 0755, true);
+        }
+        if (!rename($from, photo_path('submissions', $file))) {
+            return false;
+        }
+        photo_rename_thumb('queue', 'submissions', $file);
+        return true;
+    });
+}
+
+/**
+ * Move a queued photo into the curated gallery, and build its hero slide.
+ *
+ * The review page does not call this, and should not: accepting a submission
+ * puts it in the strip and leaves it there. The curated gallery is maintained by
+ * hand, and this is the one thing that can produce the thumbnail-width copy and
+ * the 1280px slide a photo in photos/ needs, both derived from the stored copy
+ * rather than from the original upload, which no longer exists anywhere. Run it
+ * against a queued photo as the last step of curating one by hand.
  */
 function photo_publish(string $file): bool
 {
@@ -493,12 +572,24 @@ function photo_publish(string $file): bool
     });
 }
 
-/** Send a photo back to the pending list: the inverse of photo_publish(). */
+/**
+ * Send a photo back to the pending list: the inverse of photo_accept(), and the
+ * way a curated photo is taken off the home page without being deleted.
+ *
+ * Either public collection can be sent back, and both end up in the private
+ * queue with their thumbnail. A curated photo also loses its hero slide, because
+ * the slideshow only ever shows what is in photos/; a submission never had one.
+ */
 function photo_unpublish(string $file): bool
 {
     return photo_with_lock(function () use ($file): bool {
         $file = basename($file);
-        $from = photo_path('gallery', $file);
+        $photo = photo_find($file);
+        if ($photo === null || $photo['collection'] === 'queue') {
+            return false;
+        }
+        $collection = $photo['collection'];
+        $from = photo_path($collection, $file);
         if (!is_file($from)) {
             return false;
         }
@@ -508,8 +599,8 @@ function photo_unpublish(string $file): bool
         if (!rename($from, photo_path('queue', $file))) {
             return false;
         }
-        photo_rename_thumb('gallery', 'queue', $file);
-        if (is_file(photo_slide_path($file))) {
+        photo_rename_thumb($collection, 'queue', $file);
+        if ($collection === 'gallery' && is_file(photo_slide_path($file))) {
             @unlink(photo_slide_path($file));
         }
         return true;

@@ -67,10 +67,11 @@
   }
 
   /* ---- photo lightbox ---------------------------------------------------- */
-  /* The lightbox serves the home page gallery. Thumbnails are selected by
-     their containing block rather than by a data attribute, because a photo's
-     credit, caption and date travel on the image itself and have to arrive
-     with it. */
+  /* The lightbox serves the home page gallery and the strip of photos members
+     have sent in. Thumbnails are selected by their containing block rather than
+     by a data attribute, because a photo's credit, caption and date travel on
+     the image itself and have to arrive with it -- and it is the sent-in photos
+     that carry them, since only they were submitted with a name attached. */
   var thumbs = [];
   var lightbox = null;
   var pic = null;
@@ -125,7 +126,7 @@
     });
   }
 
-  register(document.querySelectorAll(".gallery img"));
+  register(document.querySelectorAll(".gallery img, .submissions img"));
 
   /* Whatever a submitter wrote is inserted as text, never as markup: a
      caption is somebody else's sentence on a page anyone can reach. */
@@ -461,3 +462,52 @@
   });
 })();
 
+
+/* ---- photos sent in by members ------------------------------------------- */
+/* The strip shows four photos at a time and pages sideways. It is an ordinary
+   horizontally scrolling element, so a touch screen swipes it and the arrow
+   keys scroll it when it has focus; the arrows here add a way to page it with
+   a mouse, and hide themselves when there is nothing to page. */
+(function () {
+  "use strict";
+
+  var strip = document.getElementById("submissions-strip");
+  var nav = document.getElementById("submissions-nav");
+  var prev = document.getElementById("submissions-prev");
+  var next = document.getElementById("submissions-next");
+
+  if (!strip || !nav || !prev || !next) {
+    return;
+  }
+
+  /* One page is exactly one strip width, which is four photos plus the gaps
+     between them, and scroll snapping tidies up whatever is left over. */
+  function page(direction) {
+    strip.scrollBy({ left: direction * strip.clientWidth, behavior: "smooth" });
+  }
+
+  function sync() {
+    var overflowing = strip.scrollWidth > strip.clientWidth + 1;
+    nav.hidden = !overflowing;
+    if (!overflowing) {
+      return;
+    }
+    /* A pixel of slack, because sub-pixel scroll positions never land exactly
+       on the ends. */
+    prev.disabled = strip.scrollLeft <= 1;
+    next.disabled = strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 1;
+  }
+
+  prev.addEventListener("click", function () {
+    page(-1);
+  });
+  next.addEventListener("click", function () {
+    page(1);
+  });
+  strip.addEventListener("scroll", sync);
+  window.addEventListener("resize", sync);
+  /* The tiles are fixed fractions of the strip's width rather than the images'
+     own sizes, so one measurement is enough -- but it has to be taken after the
+     stylesheet has been applied, which is why this is the last thing here. */
+  sync();
+})();

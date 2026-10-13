@@ -315,6 +315,11 @@ p {
   .hero__slide {
     transition: none;
   }
+
+  /* Paging the strip of sent-in photos is still instant, just not animated. */
+  .submissions {
+    scroll-behavior: auto;
+  }
 }
 
 /* ---------- generic sections -------------------------------------------- */
@@ -479,6 +484,109 @@ p {
 
 .title-row h2 {
   margin-bottom: 0;
+}
+
+/* ---------- photos sent in by members ------------------------------------ */
+
+/* The section's own sentence, with the arrows that page it on the same line.
+   The sentence is the flexible half so a long line wraps under the arrows
+   rather than pushing them off the edge. */
+.submissions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+}
+
+.submissions-head .lede {
+  flex: 1 1 20rem;
+  width: auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.submissions {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding-bottom: 8px;
+}
+
+.submissions:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+}
+
+/* Exactly four across, gaps included; two below the narrow breakpoint so the
+   photos do not shrink to stamps on a phone. */
+.submissions > * {
+  flex: 0 0 calc((100% - 36px) / 4);
+  scroll-snap-align: start;
+}
+
+.submissions__item {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+
+.submissions__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.submissions__item:hover img,
+.submissions__item:focus img {
+  transform: scale(1.06);
+}
+
+/* Stands in for the strip entirely until somebody accepts a first submission. */
+.submissions__empty {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--muted);
+}
+
+.submissions__nav {
+  display: flex;
+  gap: 8px;
+}
+
+/* The arrows are hidden in the markup so that a no-JS visitor never sees
+   buttons that cannot work; main.js reveals them when the strip overflows. */
+.submissions__nav[hidden] {
+  display: none;
+}
+
+.submissions__nav button {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 5px 15px;
+  cursor: pointer;
+}
+
+.submissions__nav button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--brand);
+}
+
+.submissions__nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* ---------- lightbox ----------------------------------------------------- */
@@ -1569,6 +1677,10 @@ p {
      already narrow, and the padding is width the days cannot spare. */
   .calendar {
     padding: 6px 8px 12px;
+  }
+
+  .submissions > * {
+    flex-basis: calc((100% - 12px) / 2);
   }
 }
 

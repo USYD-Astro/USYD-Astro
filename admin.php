@@ -5,21 +5,23 @@ declare(strict_types=1);
  * The caretaker's page: sign in, see what has been sent in, and decide what
  * happens to it.
  *
- * Two lists, which are the two directories:
+ * Three lists, which are the three directories:
  *
- *   Pending review      photos/queue/  -- accept one into the gallery, or reject it
- *   Home page gallery   photos/        -- send one back, or delete it
+ *   Pending review      photos/queue/        -- accept one, or reject it
+ *   Photos sent in      photos/submissions/  -- on the home page: send back, or delete
+ *   Home page gallery   photos/              -- curated by hand: send back, or delete
  *
  * The queue is private. It is not rendered anywhere on the site, and .htaccess
  * refuses photos/queue/ outright, because a filename like 03.jpg is a guess away
- * and "not linked to" is not the same as "not published". That is why the list
- * below reads its thumbnails back through this script, which checks the session
- * first, instead of linking to the files.
+ * and "not linked to" is not the same as "not published". That is why the first
+ * list reads its thumbnails back through this script, which checks the session
+ * first, instead of linking to the files. The other two are public and are
+ * linked to directly.
  *
- * Accepting used to mean moving an entry from submissions.yml to gallery.yml by
- * hand and letting a workflow rebuild the page. It is now a move between two
- * directories, and the gallery and the slideshow follow from that on the next
- * request.
+ * Accepting is a move from the queue into the sent-in strip and no further, so a
+ * member's photo reaches the home page without reaching the curated gallery or
+ * the hero slideshow. That is the judgement "someone moves its entry there by
+ * hand" used to stand for, with two YAML files and a workflow behind it.
  *
  * The password hash lives in ~/suas-config.php, outside the web root, next to the
  * contact log and the removals log. Nothing here is published: the page sends
@@ -154,30 +156,44 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $error = 'That request expired. Please try again.';
         } else {
             $file = basename((string) ($_POST['file'] ?? ''));
+            /* Which collection the photo is really in, rather than which list
+               the button was pressed in: the two cannot disagree, and the log
+               line should say what actually happened. */
+            $found = photo_find($file);
+            $collection = $found === null ? '' : $found['collection'];
+
             switch ($action) {
-                case 'publish':
-                    if (photo_publish($file)) {
-                        $message = sprintf('%s is now on the home page gallery.', $file);
+                case 'accept':
+                    if (photo_accept($file)) {
+                        $message = sprintf('%s is now in the photos sent in on the home page.', $file);
                     } else {
                         $error = 'That photo is not waiting for review.';
                     }
                     break;
 
-                case 'unpublish':
+                case 'send_back':
                     if (photo_unpublish($file)) {
-                        $message = sprintf('%s is back in the pending list, with its slide removed.', $file);
+                        $message = sprintf(
+                            $collection === 'gallery'
+                                ? '%s is back in the pending list, with its slide removed.'
+                                : '%s is back in the pending list.',
+                            $file
+                        );
                     } else {
-                        $error = 'That photo is not on the home page gallery.';
+                        $error = 'That photo is not on the site.';
                     }
                     break;
 
                 case 'delete':
-                    /* One action, two events: a rejected submission and a gallery
-                       photo being taken down are different things to whoever
-                       reads removals.log later. */
-                    $reason = photo_is_queued($file)
-                        ? 'Rejected from the review page'
-                        : 'Deleted from the gallery admin page';
+                    /* One action, three events. Rejecting a submission, taking
+                       an accepted one down again and removing a curated photo
+                       are different things to whoever reads removals.log later. */
+                    $reason = match ($collection) {
+                        'queue' => 'Rejected from the review page',
+                        'submissions' => 'Deleted from the photos sent in',
+                        'gallery' => 'Deleted from the gallery admin page',
+                        default => 'Deleted from the admin page',
+                    };
                     if (photo_delete($file, $reason)) {
                         $message = sprintf('%s and its thumbnails were deleted.', $file);
                     } else {
@@ -193,6 +209,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 }
 
 $queued = photo_all('queue');
+$submissions = photo_all('submissions');
 $gallery = photo_all('gallery');
 ?>
 <!doctype html>
@@ -241,7 +258,7 @@ $gallery = photo_all('gallery');
   </form>
 
   <h2 class="admin__heading">Pending review <span class="admin__count"><?= count($queued) ?></span></h2>
-  <p class="admin__meta">Nobody can see these yet. Accepting one adds it to the photo gallery and the hero slideshow; rejecting deletes it.</p>
+  <p class="admin__meta">Nobody can see these yet. Accepting one adds it to the photos sent in on the home page; rejecting deletes it.</p>
 <?php if ($notifyTo !== ''): ?>
   <p class="admin__meta">Each submission also emails <code><?= e($notifyTo) ?></code>.</p>
 <?php endif; ?>
@@ -266,7 +283,7 @@ $gallery = photo_all('gallery');
         <form method="post" class="admin__actions">
           <input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>">
           <input type="hidden" name="file" value="<?= e($photo['file']) ?>">
-          <button type="submit" class="button" name="action" value="publish">Accept</button>
+          <button type="submit" class="button" name="action" value="accept">Accept</button>
           <button type="submit" class="button button--danger" name="action" value="delete" data-confirm="Reject <?= e($photo['file']) ?>? The photo is deleted and cannot be recovered.">Reject</button>
         </form>
       </figcaption>
@@ -275,11 +292,43 @@ $gallery = photo_all('gallery');
   </div>
 <?php endif; ?>
 
+  <h2 class="admin__heading">Photos sent in <span class="admin__count"><?= count($submissions) ?></span></h2>
+  <p class="admin__meta">These are on the home page now, in the strip below the competition blurb. Sending one back returns it to the pending list, where nobody can see it.</p>
+
+<?php if ($submissions === []): ?>
+  <p class="admin__meta">Nothing has been accepted yet.</p>
+<?php else: ?>
+  <div class="admin__grid">
+<?php foreach ($submissions as $photo): ?>
+    <figure class="admin__card">
+      <img src="<?= e(photo_thumb_url('submissions', $photo['file'])) ?>" alt="" loading="lazy">
+      <figcaption>
+        <p class="admin__file"><?= e($photo['file']) ?></p>
+        <p class="admin__detail">
+          <?= e($photo['credit'] !== '' ? $photo['credit'] : 'no credit') ?>
+          &middot; <?= e($photo['date'] !== '' ? $photo['date'] : 'no date') ?>
+          &middot; <?= e(human_bytes($photo['bytes'])) ?>
+        </p>
+<?php if ($photo['caption'] !== ''): ?>
+        <p class="admin__detail admin__caption"><?= e($photo['caption']) ?></p>
+<?php endif; ?>
+        <form method="post" class="admin__actions">
+          <input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>">
+          <input type="hidden" name="file" value="<?= e($photo['file']) ?>">
+          <button type="submit" class="button button--ghost" name="action" value="send_back">Send back</button>
+          <button type="submit" class="button button--danger" name="action" value="delete" data-confirm="Delete <?= e($photo['file']) ?> from the photos sent in? This cannot be undone.">Delete</button>
+        </form>
+      </figcaption>
+    </figure>
+<?php endforeach; ?>
+  </div>
+<?php endif; ?>
+
   <h2 class="admin__heading">Home page gallery <span class="admin__count"><?= count($gallery) ?></span></h2>
-  <p class="admin__meta">These fill the hero slideshow and the photo gallery. Sending one back returns it to the pending list, with its slide removed.</p>
+  <p class="admin__meta">These fill the hero slideshow and the photo gallery. They are curated by hand, so this list is for taking one off the site: sending one back returns it to the pending list, with its slide removed.</p>
 
 <?php if ($gallery === []): ?>
-  <p class="admin__meta">The gallery is empty. Photos sent in through the form wait above until you accept them.</p>
+  <p class="admin__meta">The gallery is empty.</p>
 <?php else: ?>
   <div class="admin__grid">
 <?php foreach ($gallery as $photo): ?>
@@ -295,7 +344,7 @@ $gallery = photo_all('gallery');
         <form method="post" class="admin__actions">
           <input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>">
           <input type="hidden" name="file" value="<?= e($photo['file']) ?>">
-          <button type="submit" class="button button--ghost" name="action" value="unpublish">Send back</button>
+          <button type="submit" class="button button--ghost" name="action" value="send_back">Send back</button>
           <button type="submit" class="button button--danger" name="action" value="delete" data-confirm="Delete <?= e($photo['file']) ?> from the gallery? This cannot be undone.">Delete</button>
         </form>
       </figcaption>

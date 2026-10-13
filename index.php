@@ -14,11 +14,13 @@ declare(strict_types=1);
  * take the upload itself, so the Worker, its token and the branch it committed to
  * are gone.
  *
- * Photos people send in are not here at all. A submission lands in photos/queue/,
- * which no visitor can reach, and the committee accepts the ones that belong on
- * the home page gallery from admin.php; until then the submitter is thanked and
- * told it is being checked. That is the whole review flow, and it is deliberate:
- * this page shows what has been approved for it and nothing else.
+ * Photos people send in are here only once a committee member has accepted them.
+ * A submission lands in photos/queue/, which no visitor can reach, and accepting
+ * it from admin.php moves it into the strip below the competition blurb -- this
+ * is that strip. Until then the submitter is thanked and told it is being
+ * checked. Accepted photos do not enter the gallery further down the page or the
+ * hero band behind it: those are curated by hand, and this page keeps the two
+ * apart.
  */
 
 require __DIR__ . '/includes/bootstrap.php';
@@ -73,6 +75,27 @@ require __DIR__ . '/includes/layout/header.php';
       <noscript>
         <p class="hint">Uploading needs JavaScript, because the photos go straight from this page to our upload service. Email us instead and we will add them for you: <a href="mailto:usydastronomy@gmail.com">usydastronomy@gmail.com</a></p>
       </noscript>
+    </div>
+  </section>
+
+  <section class="section" id="submissions">
+    <div class="wrap">
+      <div class="submissions-head">
+        <p class="lede">Photos sent in by members, shown here once the committee has accepted them. Select one to see it full size, and who sent it.</p>
+
+        <!-- The arrows are revealed by main.js only when the strip actually
+             overflows; without JavaScript it is still swipeable and scrollable,
+             so nothing is lost by their absence. -->
+        <div class="submissions__nav" id="submissions-nav" hidden>
+          <button type="button" id="submissions-prev" aria-controls="submissions-strip" aria-label="Previous photos">&#8249;</button>
+          <button type="button" id="submissions-next" aria-controls="submissions-strip" aria-label="More photos">&#8250;</button>
+        </div>
+      </div>
+
+      <div class="submissions" id="submissions-strip" tabindex="0" role="region" aria-label="Photos sent in by members">
+<?= photo_submissions_markup(photo_all('submissions')) ?>
+
+      </div>
     </div>
   </section>
 

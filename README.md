@@ -28,8 +28,8 @@ starting point for a new page.
 
 The rest of the files: `upload.php` takes the form, `admin.php` is the
 password-protected review page -- sign in to accept or reject what has been sent
-in, and to send back or delete what is on the gallery -- and `moderate.php` backs
-the remove control in the photo viewer. `home.php` is a redirect kept for old links.
+in, and to send back or delete what is on the home page -- and `moderate.php`
+backs the remove control in the photo viewer. `home.php` is a redirect kept for old links.
 `reference/` is the old Google Sites capture and the scripts that rebuilt it;
 the `.htaccess` rules answer it with a 404, along with `includes/`.
 
@@ -42,17 +42,27 @@ php -S localhost:8000
 
 ## Photos
 
-A photo is a file, and the directory it sits in decides whether it is published:
+A photo is a file, and the directory it sits in decides where it appears:
 
-- `photos/`: the home page gallery, which also feeds the hero slideshow
+- `photos/`: the home page gallery and the hero slideshow behind it, curated by hand
+- `photos/submissions/`: photos sent in through the form and accepted, shown in
+  the strip on the home page
 - `photos/queue/`: photos sent in through the form, waiting to be reviewed
 
-The queue is private. Nothing on the site renders it, and `.htaccess` answers
-404 for the directory, so a photo nobody has accepted is not on the site -- not
-even at a guessed URL. The home page shows the gallery and nothing else.
+Accepting a submission moves it into `photos/submissions/` and no further, so a
+member's photo reaches the home page without entering the curated gallery or the
+slideshow. The two are kept apart on purpose: the gallery is our choice of what
+the club looks like, the strip is whatever members have sent in.
 
-Copying a file into `photos/` publishes it, and deleting one takes it down.
-`photos/thumbs/` and `photos/slides/` hold generated copies, so leave them alone.
+The queue is private. Nothing on the site renders it, and `.htaccess` answers 404
+for the directory, so a photo nobody has accepted is not on the site -- not even
+at a guessed URL.
+
+`photos/thumbs/`, `photos/slides/` and `photos/submissions/thumbs/` hold
+generated copies, so leave them alone. Copying a file into `photos/` publishes it
+to the curated gallery; a photo added that way needs its thumbnail and its hero
+slide as well, which is what `photo_publish()` in `includes/photos.php` builds
+from a file in `photos/queue/`.
 
 The credit line and caption are not in the file. They live in `photos.json`, in
 the data directory beside `public_html` rather than inside it, along with the

@@ -11,15 +11,20 @@ declare(strict_types=1);
  * themselves when a page is asked for, and the upload endpoint writes its own
  * thumbnails, so the only thing that has to stay in step is the photographs.
  *
- * There are two collections, and the difference is the whole curation story:
+ * There are three collections, and the difference is the whole curation story:
  *
- *   photos/        the home page gallery, chosen by hand
- *   photos/queue/  what people have sent in, waiting to be reviewed
+ *   photos/                the home page gallery, chosen by hand, which also
+ *                          feeds the hero slideshow
+ *   photos/submissions/    what people have sent in, once a committee member
+ *                          has accepted it: the strip on the home page
+ *   photos/queue/          what people have sent in, waiting to be reviewed
  *
- * A submitted photo reaches the home page by being promoted from one to the
- * other, which is what the admin page does. Nothing else decides it, and a
- * queued photo is not shown to a visitor: the review page is the one place it
- * can be seen, and .htaccess refuses the directory it sits in.
+ * Accepting what somebody sent in moves it from the queue into the submissions
+ * strip, and that is as far as it goes: a submission does not enter the curated
+ * gallery, so it never reaches the hero slideshow. Only a photo placed in
+ * photos/ by hand is curated. Nothing shows a queued photo to a visitor -- the
+ * review page is the one place it can be seen, and .htaccess refuses the
+ * directory it sits in.
  *
  * Anything that must not be published lives one level above the web root, in a
  * data directory beside public_html: the admin password hash, the credit lines
@@ -32,13 +37,18 @@ define('GALLERY_DIR', APP_ROOT . '/photos');
 define('GALLERY_THUMBS', GALLERY_DIR . '/thumbs');
 define('GALLERY_SLIDES', GALLERY_DIR . '/slides');
 
+define('SUBMISSIONS_DIR', APP_ROOT . '/photos/submissions');
+define('SUBMISSIONS_THUMBS', SUBMISSIONS_DIR . '/thumbs');
+
 define('QUEUE_DIR', APP_ROOT . '/photos/queue');
 define('QUEUE_THUMBS', QUEUE_DIR . '/thumbs');
 
-/** Alternative text for a photo on the home page. */
+/** Alternative text for a photo on the home page gallery. */
 define('GALLERY_ALT', 'Photo from a previous SUAS event');
-/** Alternative text for one that came in through the form. */
-define('QUEUE_ALT', 'Photo sent in by a SUAS member');
+/** Alternative text for one somebody sent in and a committee member accepted. */
+define('SUBMISSIONS_ALT', 'Photo sent in by a SUAS member');
+/** Alternative text for one that is still waiting to be reviewed. */
+define('QUEUE_ALT', 'Photo sent in by a SUAS member, waiting to be reviewed');
 
 require_once __DIR__ . '/photos.php';
 require_once __DIR__ . '/events.php';
