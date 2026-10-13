@@ -16,7 +16,7 @@ and nothing to compile.
 | Header, navigation and hero band, on every page | `includes/layout/header.php` |
 | Footer, its sign-up link and social icons | `includes/layout/footer.php` |
 | Colours, type, spacing and layout | `assets/css/style.css` |
-| Nav menu, hero slideshow, photo viewer, gallery rail | `assets/js/main.js` |
+| Nav menu, hero slideshow, photo viewer | `assets/js/main.js` |
 | Calendar | `assets/js/calendar.js` |
 | Upload form | `assets/js/submit.js` |
 | Logo, hero images, committee photos | `assets/img/` |

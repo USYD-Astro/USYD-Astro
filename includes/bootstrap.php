@@ -7,10 +7,9 @@ declare(strict_types=1);
  *
  * The site is plain PHP served straight out of public_html. There is no build
  * step, no manifest and no CI. What the old pipeline generated ahead of time --
- * the hero band, the gallery grid, the submitted-photo rail -- is rendered from
- * the photographs themselves when a page is asked for, and the upload endpoint
- * writes its own thumbnails, so the only thing that has to stay in step is the
- * photographs.
+ * the hero band and the gallery grid -- is rendered from the photographs
+ * themselves when a page is asked for, and the upload endpoint writes its own
+ * thumbnails, so the only thing that has to stay in step is the photographs.
  *
  * There are two collections, and the difference is the whole curation story:
  *

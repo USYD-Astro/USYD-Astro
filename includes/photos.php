@@ -463,9 +463,9 @@ function photo_add_to_queue(string $sourcePath, array $meta): array
  * Promote a queued photo onto the home page: move it, and build its hero slide.
  *
  * This is what "someone moves its entry there by hand" means now. Both files
- * move, so the rail stops showing it and the gallery starts, and the slide is
- * derived from the already-scrubbed stored copy rather than from the original
- * upload, which no longer exists anywhere.
+ * move, so the pending list stops offering it and the gallery starts, and the
+ * slide is derived from the already-scrubbed stored copy rather than from the
+ * original upload, which no longer exists anywhere.
  */
 function photo_publish(string $file): bool
 {
@@ -493,7 +493,7 @@ function photo_publish(string $file): bool
     });
 }
 
-/** Send a photo back to the rail: the inverse of photo_publish(). */
+/** Send a photo back to the pending list: the inverse of photo_publish(). */
 function photo_unpublish(string $file): bool
 {
     return photo_with_lock(function () use ($file): bool {
