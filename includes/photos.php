@@ -607,13 +607,27 @@ function photo_unpublish(string $file): bool
     });
 }
 
-/** Move a thumbnail between collections, where one exists to move. */
+/**
+ * Move a thumbnail between collections, where one exists to move.
+ *
+ * The destination's thumbs/ directory is created here rather than by each
+ * caller, because rename() into a directory that does not exist fails without
+ * saying so: the thumbnail would be left behind in the collection the photo just
+ * left, and the one it arrived in would render a tile pointing at a file that is
+ * not there. A collection's thumbs/ only usually exists because something was
+ * moved into it before, which is exactly the case that hides this.
+ */
 function photo_rename_thumb(string $from, string $to, string $file): void
 {
     $source = photo_thumb_path($from, $file);
-    if (is_file($source)) {
-        rename($source, photo_thumb_path($to, $file));
+    if (!is_file($source)) {
+        return;
     }
+    $target = photo_thumb_path($to, $file);
+    if (!is_dir(dirname($target))) {
+        mkdir(dirname($target), 0755, true);
+    }
+    rename($source, $target);
 }
 
 /**
