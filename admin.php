@@ -165,7 +165,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
                 case 'unpublish':
                     if (photo_unpublish($file)) {
-                        $message = sprintf('%s is back in the rail, with its slide removed.', $file);
+                        $message = sprintf('%s is back in the pending list, with its slide removed.', $file);
                     } else {
                         $error = 'That photo is not on the home page gallery.';
                     }
