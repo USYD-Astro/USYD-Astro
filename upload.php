@@ -17,8 +17,9 @@ declare(strict_types=1);
  *
  * Photos land in the queue, which nobody outside the admin page can see: a
  * submission is not shown to a visitor until a committee member accepts it. The
- * admin page is where that decision is made, and it accepts one into the gallery
- * or rejects it outright. The submitter's name is their credit, as it was before.
+ * admin page is where that decision is made, and it accepts one into the strip
+ * of photos sent in on the home page -- not the curated gallery -- or rejects it
+ * outright. The submitter's name is their credit, as it was before.
  *
  * The same event also asks somebody to come and look: includes/mail.php sends one
  * notification per submission to the address in ~/suas-config.php. It is fire and

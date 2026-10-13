@@ -37,8 +37,9 @@ function photo_suffixes(): array
 /**
  * Where a collection keeps its files.
  *
- * The queue has no slides directory: a submitted photo is not in the home page
- * slideshow, and it does not get one until it is accepted.
+ * Neither the queue nor submissions has a slides directory. A photo somebody
+ * sent in is not in the home page slideshow, and accepting it does not put it
+ * there: a slide is built for a photo placed in the curated gallery by hand.
  */
 function photo_dirs(string $collection): array
 {
