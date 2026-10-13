@@ -15,10 +15,12 @@ declare(strict_types=1);
  * There are two collections, and the difference is the whole curation story:
  *
  *   photos/        the home page gallery, chosen by hand
- *   photos/queue/  what people have sent in, shown in the rail
+ *   photos/queue/  what people have sent in, waiting to be reviewed
  *
  * A submitted photo reaches the home page by being promoted from one to the
- * other, which is what the admin page does. Nothing else decides it.
+ * other, which is what the admin page does. Nothing else decides it, and a
+ * queued photo is not shown to a visitor: the review page is the one place it
+ * can be seen, and .htaccess refuses the directory it sits in.
  *
  * Anything that must not be published lives one level above the web root, in a
  * data directory beside public_html: the admin password hash, the credit lines
@@ -41,6 +43,7 @@ define('QUEUE_ALT', 'Photo sent in by a SUAS member');
 
 require_once __DIR__ . '/photos.php';
 require_once __DIR__ . '/events.php';
+require_once __DIR__ . '/mail.php';
 
 /**
  * Set SUAS_CONFIG to point at another config file, e.g. for a local preview.
@@ -57,6 +60,27 @@ $GLOBALS['suas_config'] = array_merge(
         // ceiling stated twice: see the MAX_BYTES note in assets/js/submit.js.
         'max_upload_bytes' => 12 * 1048576,
         'max_pixels' => 60000000,
+
+        // Where the notification's link points. A whole URL rather than the
+        // request's own host, because the message is written on the way out of
+        // an upload and there is no browser reading it to resolve a relative one.
+        'site_url' => 'https://usydastro.org',
+
+        // Who is told when a submission arrives. This is a placeholder for the
+        // committee's own inbox and is meant to be set in ~/suas-config.php:
+        // see includes/config.example.php. The club's published Gmail is refused
+        // outright by includes/mail.php and cannot be used here.
+        'notify_email' => 'murray@usydcanoeclub.org',
+
+        // What the notification comes from. Has to be an address on this
+        // account's own domain, or the host will not send it and SPF will not
+        // vouch for it.
+        'notify_from' => 'photos@usydastro.org',
+
+        // A ceiling on how many notifications an hour may leave the site. The
+        // upload endpoint is public, and mail on every POST from an open form is
+        // a way to fill somebody's inbox from a script. 0 turns the cap off.
+        'notify_max_per_hour' => 20,
     ],
     is_readable($suas_config_path) ? (array) require $suas_config_path : []
 );

@@ -32,7 +32,13 @@ Options -Indexes
 # able to expose either. reference/ is the archived old site and the scripts that
 # built it: a git checkout ships the whole tree, so it lands here whether or not
 # anything links to it.
-RedirectMatch 404 ^/(includes|data|reference)(/|$)
+#
+# photos/queue/ is there for a different reason: those are photos people have
+# sent in that nobody has accepted yet. Nothing on the site links to them, but a
+# numbered filename is a guess away, and "not linked to" is not the same as "not
+# published". The review page reads what it shows through PHP instead, which is
+# the one place they are visible.
+RedirectMatch 404 ^/(includes|data|reference|photos/queue)(/|$)
 
 # Support material that has no business being fetched: the submission log, the
 # config template, this repository's documentation, the deploy script.

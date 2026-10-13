@@ -315,11 +315,6 @@ p {
   .hero__slide {
     transition: none;
   }
-
-  /* Paging the rail is still instant, just not animated. */
-  .rail {
-    scroll-behavior: auto;
-  }
 }
 
 /* ---------- generic sections -------------------------------------------- */
@@ -332,23 +327,13 @@ p {
   background: var(--wash);
 }
 
-/* A section that directly continues the one above it, rather than starting a
-   new topic. Two stacked sections carry 36.4px of padding on each side of the
-   join, which reads as a deliberate break; here the join is a line of prose
-   and nothing more.
-
-   The doubled class is deliberate. The narrow-window rules at the foot of
-   this file re-declare .section padding, and a single .section--flush loses to
-   them on source order -- which left this silently doing nothing on a phone. */
-.section.section--flush {
-  padding-top: 0;
-}
-
-/* The other side of that same join, and the same reason for the doubled
-   class. */
-.section.section--intro {
-  padding-bottom: 11.7px;
-}
+/* There is no half-padding modifier any more. The pair that halved the join
+   between the competition blurb and the photos sent in went with the photos
+   sent in themselves: every join on the page is a whole section's padding
+   again. If one is ever wanted back, note that the narrow-window rules at the
+   foot of this file re-declare .section padding, so a single-class modifier
+   loses to them on source order and silently does nothing on a phone -- it
+   needs the doubled class. */
 
 /* The gallery band's own photo moved to the fixed page backdrop (see
    body::before); the band carries no tint of its own and sits directly on
@@ -496,143 +481,6 @@ p {
   margin-bottom: 0;
 }
 
-/* ---------- submitted photo rail ----------------------------------------- */
-
-/* The gallery's own sentence, with the arrows that page it on the same line.
-   The sentence is the flexible half so a long line wraps under the arrows
-   rather than pushing them off the edge. */
-.rail-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 16px;
-  flex-wrap: wrap;
-}
-
-.rail-head .lede {
-  flex: 1 1 20rem;
-  width: auto;
-  min-width: 0;
-  margin-bottom: 0;
-}
-
-.rail {
-  display: flex;
-  gap: 12px;
-  margin-top: 22px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
-  padding-bottom: 8px;
-}
-
-.rail:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 4px;
-}
-
-/* Exactly four across, gaps included; two below the narrow breakpoint so the
-   photos do not shrink to stamps on a phone. */
-.rail > * {
-  flex: 0 0 calc((100% - 36px) / 4);
-  scroll-snap-align: start;
-}
-
-.rail__item {
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  border-radius: 6px;
-  overflow: hidden;
-  aspect-ratio: 4 / 3;
-}
-
-.rail__item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.35s ease;
-}
-
-.rail__item:hover img,
-.rail__item:focus img {
-  transform: scale(1.06);
-}
-
-/* Replaces the rail entirely until the first submission is published. */
-.rail__empty {
-  flex: 1 1 100%;
-  margin: 0;
-  color: var(--muted);
-}
-
-/* A photo the visitor has just sent, shown in the rail before the publishing
-   Action has caught up with it. It is their own file rather than the copy
-   the site serves, so it is dashed rather than solid and says so: an
-   unmarked tile would be indistinguishable from a published one, and this
-   belongs on the page for the length of a page view and no longer. */
-.rail__item--pending {
-  position: relative;
-  outline: 1px dashed var(--rule);
-  outline-offset: -1px;
-}
-
-.rail__flag {
-  position: absolute;
-  left: 8px;
-  bottom: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.65);
-  color: #fff;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  /* The tile zooms on hover and the flag has no business coming with it. */
-  pointer-events: none;
-}
-
-/* Says what happened after an upload, since the dialog closes on success. */
-.rail__note {
-  margin: 10px 0 0;
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
-.rail__nav {
-  display: flex;
-  gap: 8px;
-}
-
-/* The arrows are hidden in the markup so that a no-JS visitor never sees
-   buttons that cannot work; main.js reveals them when the rail overflows. */
-.rail__nav[hidden] {
-  display: none;
-}
-
-.rail__nav button {
-  background: none;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  color: var(--ink);
-  font-size: 1.3rem;
-  line-height: 1;
-  padding: 5px 15px;
-  cursor: pointer;
-}
-
-.rail__nav button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--brand);
-}
-
-.rail__nav button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
 /* ---------- lightbox ----------------------------------------------------- */
 
 .lightbox {
@@ -661,8 +509,9 @@ p {
   object-fit: contain;
 }
 
-/* Details the submitter gave us. Only the submit page's rail carries them,
-   so on the home page this stays empty and takes no space. */
+/* A photo's credit, caption and date travel as data attributes on the
+   thumbnail, and not every gallery carries them. Where they are absent this
+   stays empty and takes no space, which is what has-meta is switched off for. */
 .lightbox.has-meta img {
   max-height: 66vh;
 }
@@ -1720,10 +1569,6 @@ p {
      already narrow, and the padding is width the days cannot spare. */
   .calendar {
     padding: 6px 8px 12px;
-  }
-
-  .rail > * {
-    flex-basis: calc((100% - 12px) / 2);
   }
 }
 

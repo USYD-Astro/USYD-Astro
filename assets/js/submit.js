@@ -58,9 +58,8 @@
   var opener = document.getElementById("open-upload");
   var closer = document.getElementById("close-upload");
 
-  /* Declared out here rather than inside the block below, because a
-     successful upload closes the dialog too: the point of putting the photos
-     in the gallery straight away is that the submitter can go and see them. */
+  /* Declared ahead of the handlers that use it, because closing is wired up in
+     more than one place below: the button, the backdrop and the close event. */
   function closeDialog() {
     if (!dialog) {
       return;
@@ -328,85 +327,28 @@
     return body;
   }
 
-  /* What the request in flight actually carries, snapshotted when it is
-     built. The form stays editable while the upload runs -- a submitter can
-     still take a photo back out of the list, or pick a different set, or
-     correct their name -- so what is on screen when the reply arrives is not
-     necessarily what was sent. The gallery has to show what was sent, or it
-     shows a photo nobody uploaded and hides one that was.
-
-     There is no credit field, so the name they gave is the credit, exactly as
-     upload.php records it. */
-  var sent = null;
-
-  function snapshot() {
-    return {
-      photos: prepared.slice(),
-      credit: value("name"),
-      caption: value("caption"),
-    };
-  }
-
-  /* Hand the photos just sent to the gallery, so they appear in the rail
-     immediately instead of whenever the publishing Action next runs. */
-  function announce(what) {
-    if (!what || !what.photos.length) {
-      return;
-    }
-    document.dispatchEvent(
-      new CustomEvent("suas:submissions-added", {
-        detail: {
-          photos: what.photos.map(function (entry) {
-            return { file: entry.file };
-          }),
-          credit: what.credit,
-          caption: what.caption,
-          date: today(),
-        },
-      })
-    );
-  }
-
-  /* Local, so a submitter in Sydney who sends a photo at 9am sees the 9th
-     rather than the server's UTC date. The date upload.php records is UTC, so
-     the two can differ by a day near midnight -- cosmetic, and the sort of
-     thing nobody reads twice. */
-  function today() {
-    var now = new Date();
-    return (
-      now.getFullYear() +
-      "-" +
-      ("0" + (now.getMonth() + 1)).slice(-2) +
-      "-" +
-      ("0" + now.getDate()).slice(-2)
-    );
-  }
-
   function fail(message) {
     say(message, "warn");
-    /* Nothing was stored, so nothing may be announced when the next attempt
-       succeeds. */
-    sent = null;
     submitBtn.disabled = false;
     submitBtn.textContent = "Send my photos";
   }
 
+  /* Nothing is shown on the page after a successful upload, because there is
+     nothing of theirs to show: the photos are in the review queue, and the
+     queue is not public. So the dialog stays open and says what happens next,
+     rather than closing onto a page with no trace of what they just sent.
+
+     There is no credit field, so the name they gave is the credit, exactly as
+     upload.php records it. */
   function succeed(message) {
-    say(message, "ok");
-    /* The list is emptied before the tiles are made, because render() revokes
-       the preview object URLs and a gallery tile that borrowed one of those
-       would be left pointing at a revoked URL. The tiles make their own; a
-       blob is a view onto a file already in memory, so the second set costs
-       nothing next to re-encoding anything. */
+    say(
+      message +
+        " A committee member checks every submission before it appears in the gallery.",
+      "ok"
+    );
     prepared = [];
     render();
-    announce(sent);
-    sent = null;
     form.reset();
-    /* The dialog has stood between the submitter and the gallery all the way
-       through this, and it is finished with. main.js scrolls to the photos
-       on the next frame, once the page is scrollable again. */
-    closeDialog();
     submitBtn.disabled = false;
     submitBtn.textContent = "Send my photos";
   }
@@ -478,9 +420,6 @@
     submitBtn.disabled = true;
     submitBtn.textContent = "Sending\u2026";
     say("Uploading your photos\u2026");
-    /* Taken before the body is built, so the two cannot disagree about which
-       photos this request carries. */
-    sent = snapshot();
     upload(buildForm());
   });
 })();

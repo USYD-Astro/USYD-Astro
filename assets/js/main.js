@@ -1,6 +1,7 @@
-/* Small progressive-enhancement script: mobile nav toggle, the photo
-   lightbox and the submitted-photo rail. Without JS the site is still fully
-   readable, and the rail is still scrollable and swipeable. */
+/* Small progressive-enhancement script: the mobile nav toggle, the hero
+   slideshow and the photo lightbox. Without JS the site is still fully
+   readable: the first hero slide is server-rendered as is-current, and every
+   photo is still there to look at. */
 (function () {
   "use strict";
 
@@ -66,17 +67,10 @@
   }
 
   /* ---- photo lightbox ---------------------------------------------------- */
-  /* One lightbox serves both galleries: the grid on the home page and the
-     rail on the submit page. Thumbnails are selected by their gallery rather
-     than by a data attribute, because the rail's photographs carry the
-     submission's details and those have to travel with the image.
-
-     The list is filled by register() rather than read once, because a
-     visitor's own photos are added to the rail after the page has loaded
-     (see "photos sent in from this page" below) and those have to open in
-     the lightbox like any other. Which is also why nothing here gives up
-     early on an empty list: a site nobody has submitted to yet has no
-     thumbnails at all until the first upload. */
+  /* The lightbox serves the home page gallery. Thumbnails are selected by
+     their containing block rather than by a data attribute, because a photo's
+     credit, caption and date travel on the image itself and have to arrive
+     with it. */
   var thumbs = [];
   var lightbox = null;
   var pic = null;
@@ -89,7 +83,7 @@
       thumbs.push(img);
       var i = thumbs.length - 1;
       /* The wrapper, not the image, is the click target: that is what the
-         published markup already does, and a pending tile is a button too. */
+         published markup does, so the whole tile is clickable. */
       if (img.parentElement) {
         img.parentElement.addEventListener("click", function () {
           show(i);
@@ -131,11 +125,7 @@
     });
   }
 
-  document.addEventListener("suas:rail-added", function (event) {
-    register((event.detail && event.detail.images) || []);
-  });
-
-  register(document.querySelectorAll(".gallery img, .rail img"));
+  register(document.querySelectorAll(".gallery img"));
 
   /* Whatever a submitter wrote is inserted as text, never as markup: a
      caption is somebody else's sentence on a page anyone can reach. */
@@ -357,26 +347,14 @@
     prompt.close();
 
     if (!thumbs.length) {
-      /* Nothing left to look at, so there is no viewer to report in. The home
-         page's rail carries a status line of its own. */
+      /* Nothing left to look at, so there is no viewer left to report in, and
+         the page it was opened from has no status line of its own. */
       hide();
-      announce(message);
+      window.alert(message);
       return;
     }
     show(at === -1 || at >= thumbs.length ? 0 : at);
     setLightboxStatus(message, true);
-  }
-
-  /* For the one case the viewer cannot report in itself: the last photo on the
-     page having just gone. */
-  function announce(message) {
-    var note = document.getElementById("rail-note");
-    if (!note) {
-      window.alert(message);
-      return;
-    }
-    note.textContent = message;
-    note.hidden = false;
   }
 
   /* The button itself. Only a published photo offers one: a tile the submitter
@@ -443,8 +421,8 @@
     if (data.date) {
       meta.appendChild(detail("Sent in " + readableDate(data.date), "lightbox__date"));
     }
-    /* Both galleries can have a photo taken out of them, so this is not
-       limited to the rail. */
+    /* Every gallery can have a photo taken out of it, so this control is not
+       limited to the home page. */
     if (filenameFor(thumb)) {
       meta.appendChild(removeControl(thumb));
     }
@@ -483,163 +461,3 @@
   });
 })();
 
-/* ---- submitted photo rail ------------------------------------------------- */
-/* The rail on the submit page shows four photos at a time and pages sideways.
-   It is an ordinary horizontally scrolling element, so a touch screen swipes
-   it and the arrow keys scroll it when it has focus; the arrows here add a
-   way to page it with a mouse, and hide themselves when there is nothing to
-   page. */
-(function () {
-  "use strict";
-
-  var rail = document.getElementById("rail");
-  var nav = document.getElementById("rail-nav");
-  var prev = document.getElementById("rail-prev");
-  var next = document.getElementById("rail-next");
-
-  if (!rail || !nav || !prev || !next) {
-    return;
-  }
-
-  /* One page is exactly one rail width, which is four photos plus the gaps
-     between them, and scroll snapping tidies up whatever is left over. */
-  function page(direction) {
-    rail.scrollBy({ left: direction * rail.clientWidth, behavior: "smooth" });
-  }
-
-  function sync() {
-    var overflowing = rail.scrollWidth > rail.clientWidth + 1;
-    nav.hidden = !overflowing;
-    if (!overflowing) {
-      return;
-    }
-    /* A pixel of slack, because sub-pixel scroll positions never land
-       exactly on the ends. */
-    prev.disabled = rail.scrollLeft <= 1;
-    next.disabled = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 1;
-  }
-
-  prev.addEventListener("click", function () {
-    page(-1);
-  });
-  next.addEventListener("click", function () {
-    page(1);
-  });
-  rail.addEventListener("scroll", sync);
-  window.addEventListener("resize", sync);
-  /* Photos sent in from this page are added to the rail after load, which can
-     take it from fitting on screen to overflowing it, so the arrows are
-     re-checked when that happens and not only on the next scroll. */
-  document.addEventListener("suas:rail-added", sync);
-  sync();
-})();
-
-/* ---- photos sent in from this page --------------------------------------- */
-/* A successful upload is announced by submit.js, and the photos it just sent
-   are added to the rail here so the submitter can see them at once instead
-   of waiting for the publishing Action to regenerate this page.
-
-   These are the file that came off the submitter's own camera, shown through
-   an object URL -- not the copy the site serves, which is re-encoded and
-   stripped of EXIF further downstream. That is what the flag on the tile is
-   for, and why nothing is kept: the next page load has the published rail,
-   and until then these are the only trace of the upload, held in this tab
-   alone. */
-(function () {
-  "use strict";
-
-  var rail = document.getElementById("rail");
-  var note = document.getElementById("rail-note");
-  if (!rail) {
-    return;
-  }
-
-  function tile(photo, detail) {
-    var item = document.createElement("button");
-    item.type = "button";
-    item.className = "rail__item rail__item--pending";
-
-    /* The details go on the image the way the server puts them on a published
-       one, so the lightbox reads them from the same place. Text is set as
-       text, never as markup. */
-    var img = document.createElement("img");
-    img.src = URL.createObjectURL(photo.file);
-    img.alt = "Your photo, just added to the submitted gallery";
-    if (detail.credit) {
-      img.dataset.credit = detail.credit;
-    }
-    if (detail.caption) {
-      img.dataset.caption = detail.caption;
-    }
-    if (detail.date) {
-      img.dataset.date = detail.date;
-    }
-    item.appendChild(img);
-
-    var flag = document.createElement("span");
-    flag.className = "rail__flag";
-    flag.textContent = "Just added";
-    item.appendChild(flag);
-
-    return { item: item, img: img };
-  }
-
-  document.addEventListener("suas:submissions-added", function (event) {
-    var detail = (event && event.detail) || {};
-    var photos = detail.photos || [];
-    if (!photos.length) {
-      return;
-    }
-
-    /* The rail holds a "nothing sent in yet" note until the first submission
-       is published, which is exactly when a submitter is least likely to have
-       seen it. It has no business sitting above their own photo. */
-    var empty = rail.querySelector(".rail__empty");
-    if (empty) {
-      empty.parentNode.removeChild(empty);
-    }
-
-    /* Appended, not prepended: photo_all() lists the stored photos in order
-       too, so these land where the published photos will land. */
-    var images = [];
-    var newest = null;
-    photos.forEach(function (photo) {
-      var made = tile(photo, detail);
-      images.push(made.img);
-      rail.appendChild(made.item);
-      newest = made.item;
-    });
-
-    if (note) {
-      var count = photos.length;
-      note.textContent =
-        count === 1
-          ? "Your photo is now at the end of the gallery."
-          : "Your " + count + " photos are now at the end of the gallery.";
-      note.hidden = false;
-    }
-
-    document.dispatchEvent(
-      new CustomEvent("suas:rail-added", { detail: { images: images } })
-    );
-
-    /* A frame later, so the upload dialog is properly gone first: the page
-       is still unscrollable while it is open, and the scroll would be
-       swallowed. */
-    window.requestAnimationFrame(function () {
-      if (!newest) {
-        return;
-      }
-      /* The last of them, not the first: the rail is a strip that pages
-         sideways, so lining the first new photo up with the right-hand edge
-         would show one of eight and hide the rest behind it. */
-      newest.scrollIntoView({
-        block: "center",
-        inline: "end",
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-      });
-    });
-  });
-})();

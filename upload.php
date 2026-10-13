@@ -15,11 +15,16 @@ declare(strict_types=1);
  * sane size and pixel count, and a real image behind the extension. All of it is
  * checked before anything is stored, so a bad batch leaves nothing behind.
  *
- * Photos land in the queue -- the rail on the home page -- not in the curated
- * gallery. That is the same separation the two manifests used to express, and it
- * stays a human decision: the admin page promotes the ones that belong in the
- * gallery. The submitter's name is their credit, as it was before.
+ * Photos land in the queue, which nobody outside the admin page can see: a
+ * submission is not shown to a visitor until a committee member accepts it. The
+ * admin page is where that decision is made, and it accepts one into the gallery
+ * or rejects it outright. The submitter's name is their credit, as it was before.
  *
+ * The same event also asks somebody to come and look: includes/mail.php sends one
+ * notification per submission to the address in ~/suas-config.php. It is fire and
+ * forget by design -- the photos are stored by then, and a mail server that is
+ * down is not the submitter's problem.
+
  * The photograph is re-encoded by includes/photos.php on the way in, which is
  * where EXIF is dropped. The page sends the original file, metadata and all, so
  * this is the only place that scrubs it -- and it does, because GD writes new
@@ -238,7 +243,7 @@ if ($stored === []) {
     upload_fail(500, 'The server could not save those photos. Please try again in a moment.');
 }
 
-photo_log_submission([
+$record = [
     'received' => date('c'),
     'name' => $name,
     'email' => $email,
@@ -246,7 +251,13 @@ photo_log_submission([
     'caption' => $caption,
     'files' => array_column($stored, 'file'),
     'ip' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
-]);
+];
+photo_log_submission($record);
+
+/* The return value is deliberately dropped. Everything the submitter was
+   promised has already happened, and a notification that could not be sent is
+   recorded in mail.log rather than reported here, where nobody could act on it. */
+suas_notify_submission($record, count(photo_all('queue')));
 
 $count = count($stored);
 $message = match (true) {

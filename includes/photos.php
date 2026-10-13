@@ -8,13 +8,17 @@ declare(strict_types=1);
  * directory puts it in is what it means:
  *
  *   photos/        the home page gallery, curated by hand
- *   photos/queue/  sent in through the form, shown in the rail on the way in
+ *   photos/queue/  sent in through the form, waiting to be reviewed
  *
- * Promoting a photo -- the admin page's "add to the home page gallery" -- moves
- * the file from one directory to the other and gives it a hero slide, because
- * only the home page gallery feeds the slideshow. That replaces moving an entry
- * between two YAML files and regenerating markup, and it means the two
- * collections cannot disagree with what is actually published.
+ * Promoting a photo -- the admin page's "accept" -- moves the file from one
+ * directory to the other and gives it a hero slide, because only the home page
+ * gallery feeds the slideshow. That replaces moving an entry between two YAML
+ * files and regenerating markup, and it means the two collections cannot
+ * disagree with what is actually published.
+ *
+ * The queue is private. Nothing here renders it as a public block, .htaccess
+ * refuses photos/queue/ outright, and the review page reads it through PHP: a
+ * photo nobody has accepted yet is not on the site.
  *
  * The little that is not in the pixels -- the credit, the caption and the date a
  * photo arrived -- lives in photos.json in the data directory above the web root.
@@ -36,7 +40,7 @@ function photo_is_queued(string $file): bool
  * Where a collection keeps its files.
  *
  * The queue has no slides directory: a submitted photo is not in the home page
- * slideshow, and the old pipeline deliberately did not build one for it either.
+ * slideshow, and it does not get one until it is accepted.
  */
 function photo_dirs(string $collection): array
 {
@@ -208,37 +212,10 @@ function photo_gallery_markup(array $photos): string
     return implode("\n", $lines);
 }
 
-/**
- * The rail: the photos sent in so far, each carrying its own details.
- *
- * The credit, caption and date travel as data attributes on the image the
- * lightbox opens, which is how the expanded view can show who sent a photo and
- * what they said about it without anything being fetched separately.
- */
-function photo_rail_markup(array $photos): string
-{
-    if ($photos === []) {
-        return '        <p class="rail__empty">Nothing has been sent in yet, yours could be '
-            . 'the first! Use the button above to add your photos to this gallery.</p>';
-    }
-
-    $lines = [];
-    foreach ($photos as $photo) {
-        $bits = [
-            sprintf('src="%s"', attr(photo_thumb_url('queue', $photo['file']))),
-            sprintf('data-full="%s"', attr(photo_full_url('queue', $photo['file']))),
-        ];
-        foreach (['credit', 'caption', 'date'] as $key) {
-            if ($photo[$key] !== '') {
-                $bits[] = sprintf('data-%s="%s"', $key, attr($photo[$key]));
-            }
-        }
-        $bits[] = sprintf('alt="%s"', attr($photo['alt']));
-        $lines[] = '        <button type="button" class="rail__item"><img '
-            . implode(' ', $bits) . '></button>';
-    }
-    return implode("\n", $lines);
-}
+/* There is no queue markup function. The rail that showed photos as they came in
+   was removed with the public rail itself -- see index.php -- and the review page
+   builds its own list, because the one thing a queued photo needs is an accept
+   and a reject button beside it. */
 
 /**
  * The hero band's crossfading slides, one figure per curated photo.

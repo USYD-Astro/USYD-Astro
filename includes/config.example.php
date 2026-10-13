@@ -44,4 +44,30 @@ return [
     'max_photos_per_upload' => 8,
     'max_upload_bytes' => 12 * 1024 * 1024,
     'max_pixels' => 60000000,
+
+    // The site's own address, used for the link in the notification email and
+    // anywhere else a whole URL is needed outside a request.
+    'site_url' => 'https://usydastro.org',
+
+    // Who is emailed when somebody sends photos in, so that a submission does
+    // not sit unreviewed until somebody happens to open the admin page. One
+    // message per submission, with a link to /admin.php.
+    //
+    // NOT usydastronomy@gmail.com. That address is public, it is read by hand,
+    // and nothing automated may be sent to it; includes/mail.php refuses it
+    // whatever this file says. The default here is a placeholder -- put the
+    // committee inbox that should actually receive these in its place.
+    'notify_email' => 'murray@usydcanoeclub.org',
+
+    // What the notification is sent from. Must be an address on this account's
+    // own domain, or the host's mail server will not send it and SPF will not
+    // vouch for it. It does not have to be a mailbox anyone reads, but it does
+    // have to exist as a mailbox or forwarder on the account.
+    'notify_from' => 'photos@usydastro.org',
+
+    // The most notifications that may leave the site in a rolling hour. The
+    // upload endpoint is public, so without a ceiling the form is a way to fill
+    // somebody's inbox from a script. Anything over the cap is skipped, logged
+    // to mail.log, and not worth failing the upload over. 0 turns it off.
+    'notify_max_per_hour' => 20,
 ];

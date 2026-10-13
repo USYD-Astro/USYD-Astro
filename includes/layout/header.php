@@ -82,6 +82,11 @@ $page_url = $page_origin . $page_path;
     <nav class="nav" id="primary-nav" aria-label="Primary">
       <a href="index.php"<?= $nav_home ? ' aria-current="page"' : '' ?>>Home</a>
       <a href="https://usu.edu.au/clubs/suas">Sign Up</a>
+      <!-- Last, and plainly labelled: it is a committee page rather than
+           something a visitor is meant to click, but it has to be reachable
+           from the site itself. The page behind it is noindex and asks for a
+           password, so the link is an address, not an invitation. -->
+      <a href="admin.php">Admin</a>
     </nav>
   </div>
 </header>

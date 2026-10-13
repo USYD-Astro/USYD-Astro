@@ -2,20 +2,23 @@
 declare(strict_types=1);
 
 /**
- * The home page: the competition, the photos sent in so far, and the gallery.
+ * The home page: the competition, the events, and the gallery.
  *
- * All three image blocks used to be generated into this file by tools/gallery.py
- * and checked in CI to keep them from drifting. They are rendered from the photo
- * directories here instead: the hero and the gallery from photos/, the rail from
- * photos/queue/.
+ * The image blocks used to be generated into this file by tools/gallery.py and
+ * checked in CI to keep them from drifting. They are rendered from the photo
+ * directory here instead: the hero and the gallery are both photos/.
  *
  * The upload form posts to upload.php on this same server. It used to post to a
  * Cloudflare Worker, because GitHub Pages cannot accept an upload and no
  * credential that can write to a repository belongs in a public page. PHP can
  * take the upload itself, so the Worker, its token and the branch it committed to
- * are gone; the endpoint below validates the same things and files the photos in
- * the rail, where a committee member promotes the ones that belong on the home
- * page gallery.
+ * are gone.
+ *
+ * Photos people send in are not here at all. A submission lands in photos/queue/,
+ * which no visitor can reach, and the committee accepts the ones that belong on
+ * the home page gallery from admin.php; until then the submitter is thanked and
+ * told it is being checked. That is the whole review flow, and it is deliberate:
+ * this page shows what has been approved for it and nothing else.
  */
 
 require __DIR__ . '/includes/bootstrap.php';
@@ -53,7 +56,7 @@ $events = astro_events();
 require __DIR__ . '/includes/layout/header.php';
 ?>
 
-  <section class="section section--intro">
+  <section class="section">
     <div class="wrap">
       <div class="title-row">
         <h2>2026 Astrophotography Competition</h2>
@@ -70,35 +73,6 @@ require __DIR__ . '/includes/layout/header.php';
       <noscript>
         <p class="hint">Uploading needs JavaScript, because the photos go straight from this page to our upload service. Email us instead and we will add them for you: <a href="mailto:usydastronomy@gmail.com">usydastronomy@gmail.com</a></p>
       </noscript>
-    </div>
-  </section>
-
-  <section class="section section--flush" id="sent-in">
-    <div class="wrap">
-      <div class="rail-head">
-        <p class="lede">A gallery of photos sent in thus far is shown below. Click on a photo to see full size + more info.</p>
-
-        <!-- The arrows are revealed by main.js only when the rail actually
-             overflows; without JavaScript the rail is still swipeable and
-             scrollable, so nothing is lost. They share the line with the
-             sentence rather than sitting on a row of their own above it. -->
-        <div class="rail__nav" id="rail-nav" hidden>
-          <button type="button" id="rail-prev" aria-controls="rail" aria-label="Previous photos">&#8249;</button>
-          <button type="button" id="rail-next" aria-controls="rail" aria-label="More photos">&#8250;</button>
-        </div>
-      </div>
-
-      <!-- Where the result of a successful upload is reported. The upload
-           dialog closes on success so the submitter can see the photos they
-           just sent, which leaves this as the only place left to say that it
-           worked. Outside the generated markers, so the rail splice never
-           touches it. -->
-      <p class="rail__note" id="rail-note" role="status" hidden></p>
-
-      <div class="rail" id="rail" tabindex="0" role="region" aria-label="Photos sent in thus far">
-<?= photo_rail_markup(photo_all('queue')) ?>
-
-      </div>
     </div>
   </section>
 
@@ -229,8 +203,9 @@ require __DIR__ . '/includes/layout/header.php';
     </div>
 
     <!-- Where the photos go. upload.php is this site's own endpoint: it
-         validates the submission and files it in the rail, and there is no
-         credential in this page because there is nothing here that needs one. -->
+         validates the submission and files it in the queue for review, and
+         there is no credential in this page because there is nothing here that
+         needs one. -->
     <form class="submit-form modal__body" id="photo-form" method="post" action="upload.php" enctype="multipart/form-data" novalidate>
 
       <!-- The drop target is a label for the file input, so a click opens the

@@ -7,13 +7,19 @@ declare(strict_types=1);
  *
  * Two lists, which are the two directories:
  *
- *   Sent in                 photos/queue/  -- promote one to the gallery, or bin it
- *   Home page gallery       photos/        -- send one back, or bin it
+ *   Pending review      photos/queue/  -- accept one into the gallery, or reject it
+ *   Home page gallery   photos/        -- send one back, or delete it
  *
- * Promoting used to mean moving an entry from submissions.yml to gallery.yml by
+ * The queue is private. It is not rendered anywhere on the site, and .htaccess
+ * refuses photos/queue/ outright, because a filename like 03.jpg is a guess away
+ * and "not linked to" is not the same as "not published". That is why the list
+ * below reads its thumbnails back through this script, which checks the session
+ * first, instead of linking to the files.
+ *
+ * Accepting used to mean moving an entry from submissions.yml to gallery.yml by
  * hand and letting a workflow rebuild the page. It is now a move between two
- * directories, and the gallery, the rail and the slideshow follow from that on
- * the next request.
+ * directories, and the gallery and the slideshow follow from that on the next
+ * request.
  *
  * The password hash lives in ~/suas-config.php, outside the web root, next to the
  * contact log and the removals log. Nothing here is published: the page sends
@@ -36,6 +42,7 @@ session_set_cookie_params([
 session_start();
 
 $passwordHash = admin_password_hash();
+$notifyTo = suas_notify_recipient();
 $message = '';
 $error = '';
 
@@ -53,6 +60,69 @@ function admin_csrf_ok(): bool
 {
     $token = (string) ($_POST['csrf'] ?? '');
     return $token !== '' && hash_equals((string) $_SESSION['csrf'], $token);
+}
+
+/**
+ * Send one queued photo's thumbnail, to a signed-in session and nobody else.
+ *
+ * .htaccess answers 404 for all of photos/queue/, so the list below cannot link
+ * to a file there. It asks this instead, and this checks the session before it
+ * reads anything: an unreviewed photo is not on the site, and the point of the
+ * review step is that nobody sees one until somebody here accepts it.
+ *
+ * A query on this script rather than a second file, because the sign-in, the
+ * session and the password hash are already here, and a separate endpoint would
+ * be a second copy of them to keep in step.
+ */
+function admin_send_pending_thumb(string $file): void
+{
+    /* basename() as well as the pattern: the two together are what make this
+       safe whatever arrives in the query string. */
+    $name = basename($file);
+    if (preg_match('/^\d{2,}\.[A-Za-z0-9]+$/', $name) !== 1) {
+        http_response_code(404);
+        exit;
+    }
+
+    /* 403 rather than 404 when signed out: the filename came from this page, so
+       there is nothing to hide about the photo existing -- only about what it
+       looks like. */
+    if (!admin_signed_in()) {
+        http_response_code(403);
+        exit;
+    }
+
+    $path = photo_thumb_path('queue', $name);
+    /* is_readable as well as is_file: the read below is the whole point of this
+       function, and a file that is present but unreadable would answer with a
+       warning and no bytes instead of a clean 404. */
+    if (!is_file($path) || !is_readable($path)) {
+        http_response_code(404);
+        exit;
+    }
+
+    header('Content-Type: image/jpeg');
+    header('Content-Length: ' . filesize($path));
+    header('Cache-Control: private, no-store', true);
+    readfile($path);
+    exit;
+}
+
+/** Where the review page asks for a queued photo's thumbnail: see above. */
+function admin_pending_thumb_url(string $file): string
+{
+    return 'admin.php?pending=' . rawurlencode(basename($file));
+}
+
+/* No session, no image: this runs before the POST handling below, and before
+   anything is written to the response.
+
+   is_string() rather than isset(), because a query string can carry
+   pending[]= and hand an array to something expecting a filename, which is a
+   PHP warning per request from anyone who cares to ask. Anything that is not a
+   plain string was never a filename. */
+if (is_string($_GET['pending'] ?? null)) {
+    admin_send_pending_thumb($_GET['pending']);
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
@@ -89,7 +159,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     if (photo_publish($file)) {
                         $message = sprintf('%s is now on the home page gallery.', $file);
                     } else {
-                        $error = 'That photo is not in the queue.';
+                        $error = 'That photo is not waiting for review.';
                     }
                     break;
 
@@ -102,7 +172,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     break;
 
                 case 'delete':
-                    if (photo_delete($file, 'Deleted from the admin page')) {
+                    /* One action, two events: a rejected submission and a gallery
+                       photo being taken down are different things to whoever
+                       reads removals.log later. */
+                    $reason = photo_is_queued($file)
+                        ? 'Rejected from the review page'
+                        : 'Deleted from the gallery admin page';
+                    if (photo_delete($file, $reason)) {
                         $message = sprintf('%s and its thumbnails were deleted.', $file);
                     } else {
                         $error = 'That photo was not found.';
@@ -164,16 +240,19 @@ $gallery = photo_all('gallery');
     <button type="submit" class="button button--ghost">Sign out</button>
   </form>
 
-  <h2 class="admin__heading">Sent in <span class="admin__count"><?= count($queued) ?></span></h2>
-  <p class="admin__meta">These appear in the rail on the home page. Add one to the gallery when you want it in the slideshow and the photo gallery.</p>
+  <h2 class="admin__heading">Pending review <span class="admin__count"><?= count($queued) ?></span></h2>
+  <p class="admin__meta">Nobody can see these yet. Accepting one adds it to the photo gallery and the hero slideshow; rejecting deletes it.</p>
+<?php if ($notifyTo !== ''): ?>
+  <p class="admin__meta">Each submission also emails <code><?= e($notifyTo) ?></code>.</p>
+<?php endif; ?>
 
 <?php if ($queued === []): ?>
-  <p class="admin__meta">Nothing has been sent in yet.</p>
+  <p class="admin__meta">Nothing is waiting for review.</p>
 <?php else: ?>
   <div class="admin__grid">
 <?php foreach ($queued as $photo): ?>
     <figure class="admin__card">
-      <img src="<?= e(photo_thumb_url('queue', $photo['file'])) ?>" alt="" loading="lazy">
+      <img src="<?= e(admin_pending_thumb_url($photo['file'])) ?>" alt="" loading="lazy">
       <figcaption>
         <p class="admin__file"><?= e($photo['file']) ?></p>
         <p class="admin__detail">
@@ -187,8 +266,8 @@ $gallery = photo_all('gallery');
         <form method="post" class="admin__actions">
           <input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>">
           <input type="hidden" name="file" value="<?= e($photo['file']) ?>">
-          <button type="submit" class="button" name="action" value="publish">Add to gallery</button>
-          <button type="submit" class="button button--danger" name="action" value="delete" data-confirm="Delete <?= e($photo['file']) ?>? This cannot be undone.">Delete</button>
+          <button type="submit" class="button" name="action" value="publish">Accept</button>
+          <button type="submit" class="button button--danger" name="action" value="delete" data-confirm="Reject <?= e($photo['file']) ?>? The photo is deleted and cannot be recovered.">Reject</button>
         </form>
       </figcaption>
     </figure>
@@ -197,10 +276,10 @@ $gallery = photo_all('gallery');
 <?php endif; ?>
 
   <h2 class="admin__heading">Home page gallery <span class="admin__count"><?= count($gallery) ?></span></h2>
-  <p class="admin__meta">These fill the hero slideshow and the photo gallery. Sending one back leaves it in the rail with its slide removed.</p>
+  <p class="admin__meta">These fill the hero slideshow and the photo gallery. Sending one back returns it to the pending list, with its slide removed.</p>
 
 <?php if ($gallery === []): ?>
-  <p class="admin__meta">The gallery is empty. Photos sent in through the form appear above.</p>
+  <p class="admin__meta">The gallery is empty. Photos sent in through the form wait above until you accept them.</p>
 <?php else: ?>
   <div class="admin__grid">
 <?php foreach ($gallery as $photo): ?>
