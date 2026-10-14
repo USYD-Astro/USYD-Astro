@@ -3,7 +3,7 @@
 #
 # The live checkout on the server (~/public_html, a git checkout of origin/main)
 # and the live site at https://usydastro.org/ both stand at:
-LIVE_SERVER_GIT_REV=937d196
+LIVE_SERVER_GIT_REV=04bd6d4
 #
 # This file's own commit is bookkeeping on top of that rev, so it is one commit
 # ahead of what it records; the authoritative marker is the server's
@@ -12,8 +12,8 @@ LIVE_SERVER_GIT_REV=937d196
 # How this deploy ran: git push origin HEAD:main, then git pull --ff-only in
 # ~/public_html (the flow in README.md, Deploying).
 #
-# Verified on 937d196:
-#  - no hybrid: local, origin/main and the server all resolve to 937d196, and
+# Verified on 04bd6d4:
+#  - no hybrid: local, origin/main and the server all resolve to 04bd6d4, and
 #    every tracked code file now matches the repo (the four asset files are
 #    committed, so the live site no longer runs anything uncommitted)
 #  - the competition title sits a normal distance above the photos sent in: /
@@ -39,6 +39,17 @@ LIVE_SERVER_GIT_REV=937d196
 #    as "1.2 MB" alone, all three present render "Vansh Srivastava · 10
 #    October 2026 · 1.2 MB", and admin.php plus includes/photos.php are
 #    md5-identical between this worktree and the server
+#  - Move To Gallery / Move To Submissions work end to end: a 18-assertion
+#    fixture ran ON the server against the deployed bytes (GD present) --
+#    submissions -> gallery lands file, thumb and a built hero slide with
+#    nothing left behind, gallery -> submissions takes the slide away with it,
+#    and the queue, a same-collection move, a bad destination and a missing
+#    file are all refused without touching anything. The render-only signed-in
+#    check with the real data shows 3 Move To Gallery and 19 Move To
+#    Submissions buttons, matching the lists, with no stale prose; no real
+#    photo was moved (submissions 3, gallery 19, slides 19 before and after)
+#  - / and /admin.php both answer 200, and admin.php plus includes/photos.php
+#    are md5-identical between this worktree and the server
 #  - the admin page reads "Admin" everywhere: the served <h1> is "Admin" and the
 #    tab title is "SUAS Admin" (site prefix kept), both read back from the live
 #    served page
