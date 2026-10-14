@@ -332,13 +332,20 @@ p {
   background: var(--wash);
 }
 
-/* There is no half-padding modifier any more. The pair that halved the join
-   between the competition blurb and the photos sent in went with the photos
-   sent in themselves: every join on the page is a whole section's padding
-   again. If one is ever wanted back, note that the narrow-window rules at the
-   foot of this file re-declare .section padding, so a single-class modifier
-   loses to them on source order and silently does nothing on a phone -- it
-   needs the doubled class. */
+/* The join between the competition blurb and the photos sent in is one
+   section's padding, not two: the competition section gives up its bottom
+   half and the strip its top half, so the title sits a normal distance above
+   the photos rather than above a double gap. Each modifier is a doubled class
+   on purpose -- the narrow-window rules at the foot of this file re-declare
+   .section padding, so a single class loses to them on source order and
+   silently does nothing on a phone. */
+.section--half-bottom.section--half-bottom {
+  padding-bottom: 18.2px;
+}
+
+.section--half-top.section--half-top {
+  padding-top: 18.2px;
+}
 
 /* The gallery band's own photo moved to the fixed page backdrop (see
    body::before); the band carries no tint of its own and sits directly on
@@ -1657,6 +1664,16 @@ p {
 
   .section {
     padding: 26px 0;
+  }
+
+  /* The half-padding pair keeps its halves proportionate here, and still has
+     to be doubled to out-rank the rule above. */
+  .section--half-bottom.section--half-bottom {
+    padding-bottom: 13px;
+  }
+
+  .section--half-top.section--half-top {
+    padding-top: 13px;
   }
 
   .site-foot__inner {

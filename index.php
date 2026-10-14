@@ -58,7 +58,7 @@ $events = astro_events();
 require __DIR__ . '/includes/layout/header.php';
 ?>
 
-  <section class="section">
+  <section class="section section--half-bottom">
     <div class="wrap">
       <div class="title-row">
         <h2>2026 Astrophotography Competition</h2>
@@ -78,7 +78,7 @@ require __DIR__ . '/includes/layout/header.php';
     </div>
   </section>
 
-  <section class="section" id="submissions">
+  <section class="section section--half-top" id="submissions">
     <div class="wrap">
       <div class="submissions-head">
         <p class="lede">Photos sent in by members, shown here once the committee has accepted them. Select one to see it full size, and who sent it.</p>
