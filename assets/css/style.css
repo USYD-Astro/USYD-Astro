@@ -1383,6 +1383,18 @@ p {
   font-size: 0.9rem;
 }
 
+.admin__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.admin__head h1 {
+  margin-bottom: 0;
+}
+
 .admin__heading {
   font-family: var(--font-head);
   font-weight: 400;
@@ -1452,7 +1464,7 @@ p {
 }
 
 .admin__logout {
-  margin: 0 0 24px;
+  margin: 0;
 }
 
 .admin__grid {

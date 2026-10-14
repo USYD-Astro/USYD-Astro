@@ -241,7 +241,15 @@ $gallery = photo_all('gallery');
 
 <main class="admin__wrap">
   <p class="admin__back"><a href="index.php">&larr; Back to the site</a></p>
-  <h1>Admin</h1>
+  <div class="admin__head">
+    <h1>Admin</h1>
+<?php if (admin_signed_in()): ?>
+    <form method="post" class="admin__logout">
+      <input type="hidden" name="action" value="logout">
+      <button type="submit" class="button button--ghost">Sign out</button>
+    </form>
+<?php endif; ?>
+  </div>
 
 <?php if ($message !== ''): ?>
   <p class="admin__flash admin__flash--ok"><?= e($message) ?></p>
@@ -266,11 +274,6 @@ $gallery = photo_all('gallery');
   <?php endif; ?>
 
 <?php else: ?>
-
-  <form method="post" class="admin__logout">
-    <input type="hidden" name="action" value="logout">
-    <button type="submit" class="button button--ghost">Sign out</button>
-  </form>
 
   <h2 class="admin__heading">Pending review <span class="admin__count"><?= count($queued) ?></span></h2>
   <p class="admin__meta">Nobody can see these yet. Accepting one adds it to the photos sent in on the home page; rejecting deletes it.</p>
