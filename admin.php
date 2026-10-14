@@ -8,8 +8,10 @@ declare(strict_types=1);
  * Three lists, which are the three directories:
  *
  *   Pending review      photos/queue/        -- accept one, or reject it
- *   Photos sent in      photos/submissions/  -- on the home page: delete
- *   Home page gallery   photos/              -- curated by hand: delete
+ *   Photos sent in      photos/submissions/  -- on the home page: move to the
+ *                                                gallery, or delete
+ *   Home page gallery   photos/              -- curated by hand: move to the
+ *                                                photos sent in, or delete
  *
  * The queue is private. It is not rendered anywhere on the site, and .htaccess
  * refuses photos/queue/ outright, because a filename like 03.jpg is a guess away
@@ -181,6 +183,22 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     }
                     break;
 
+                case 'move_to_gallery':
+                    if (photo_move($file, 'gallery')) {
+                        $message = sprintf('%s is now in the home page gallery, and in the slideshow.', $file);
+                    } else {
+                        $error = 'That photo is not in the photos sent in.';
+                    }
+                    break;
+
+                case 'move_to_submissions':
+                    if (photo_move($file, 'submissions')) {
+                        $message = sprintf('%s is now in the photos sent in, and off the slideshow.', $file);
+                    } else {
+                        $error = 'That photo is not in the gallery.';
+                    }
+                    break;
+
                 case 'delete':
                     /* One action, three events. Rejecting a submission, taking
                        an accepted one down again and removing a curated photo
@@ -286,7 +304,7 @@ $gallery = photo_all('gallery');
 <?php endif; ?>
 
   <h2 class="admin__heading">Photos sent in <span class="admin__count"><?= count($submissions) ?></span></h2>
-  <p class="admin__meta">These are on the home page now, in the strip below the competition blurb.</p>
+  <p class="admin__meta">These are on the home page now, in the strip below the competition blurb. Move one to the gallery to curate it as well, or delete it to take it down.</p>
 
 <?php if ($submissions === []): ?>
   <p class="admin__meta">Nothing has been accepted yet.</p>
@@ -304,6 +322,7 @@ $gallery = photo_all('gallery');
         <form method="post" class="admin__actions">
           <input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>">
           <input type="hidden" name="file" value="<?= e($photo['file']) ?>">
+          <button type="submit" class="button button--ghost" name="action" value="move_to_gallery" data-confirm="Move <?= e($photo['file']) ?> to the home page gallery? It joins the photo gallery and the hero slideshow.">Move To Gallery</button>
           <button type="submit" class="button button--danger" name="action" value="delete" data-confirm="Delete <?= e($photo['file']) ?> from the photos sent in? This cannot be undone.">Delete</button>
         </form>
       </figcaption>
@@ -313,7 +332,7 @@ $gallery = photo_all('gallery');
 <?php endif; ?>
 
   <h2 class="admin__heading">Home page gallery <span class="admin__count"><?= count($gallery) ?></span></h2>
-  <p class="admin__meta">These fill the hero slideshow and the photo gallery. They are curated by hand, so this list is for taking one off the site.</p>
+  <p class="admin__meta">These fill the hero slideshow and the photo gallery. They are curated by hand: move one to the photos sent in if it was placed here by mistake, or delete it to take it off the site.</p>
 
 <?php if ($gallery === []): ?>
   <p class="admin__meta">The gallery is empty.</p>
@@ -328,6 +347,7 @@ $gallery = photo_all('gallery');
         <form method="post" class="admin__actions">
           <input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>">
           <input type="hidden" name="file" value="<?= e($photo['file']) ?>">
+          <button type="submit" class="button button--ghost" name="action" value="move_to_submissions" data-confirm="Move <?= e($photo['file']) ?> to the photos sent in? It leaves the photo gallery and the hero slideshow.">Move To Submissions</button>
           <button type="submit" class="button button--danger" name="action" value="delete" data-confirm="Delete <?= e($photo['file']) ?> from the gallery? This cannot be undone.">Delete</button>
         </form>
       </figcaption>
@@ -340,8 +360,9 @@ $gallery = photo_all('gallery');
 </main>
 
 <script>
-/* A delete is irreversible, so ask first. Kept here rather than in main.js: it is
-   the only page that needs it, and this page loads no public scripts. */
+/* A delete is irreversible and a move changes the public home page the moment it
+   is pressed, so both ask first. Kept here rather than in main.js: it is the
+   only page that needs it, and this page loads no public scripts. */
 document.querySelectorAll("[data-confirm]").forEach(function (button) {
   button.addEventListener("click", function (event) {
     if (!window.confirm(button.dataset.confirm)) {

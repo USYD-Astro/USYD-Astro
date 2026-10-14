@@ -574,6 +574,54 @@ function photo_publish(string $file): bool
 }
 
 /**
+ * Move a photo between the two public collections, in either direction.
+ *
+ * submissions -> gallery builds the hero slide a gallery photo needs, so the
+ * photo joins the slideshow as well as the grid. gallery -> submissions takes
+ * its slide with it: the slideshow only ever shows what is in photos/, and a
+ * photo that has moved to the strip must not linger there. The credit, caption
+ * and date travel untouched -- they hang off the number in photos.json and the
+ * number never changes.
+ *
+ * The queue is deliberately not a destination and not a source: a queued photo
+ * is accepted or rejected, and this is what the review page offers on the two
+ * lists a visitor can already see.
+ */
+function photo_move(string $file, string $to): bool
+{
+    if ($to !== 'gallery' && $to !== 'submissions') {
+        return false;
+    }
+    return photo_with_lock(function () use ($file, $to): bool {
+        $file = basename($file);
+        $photo = photo_find($file);
+        if ($photo === null || $photo['collection'] === 'queue' || $photo['collection'] === $to) {
+            return false;
+        }
+        $from = $photo['collection'];
+        if (!is_dir(photo_dirs($to)['dir'])) {
+            mkdir(photo_dirs($to)['dir'], 0755, true);
+        }
+        if (!rename(photo_path($from, $file), photo_path($to, $file))) {
+            return false;
+        }
+        photo_rename_thumb($from, $to, $file);
+
+        if ($to === 'gallery') {
+            $image = photo_load(photo_path('gallery', $file));
+            try {
+                photo_write_jpeg($image, photo_slide_path($file), 1280, 80);
+            } finally {
+                imagedestroy($image);
+            }
+        } elseif (is_file(photo_slide_path($file))) {
+            @unlink(photo_slide_path($file));
+        }
+        return true;
+    });
+}
+
+/**
  * Move a thumbnail between collections, where one exists to move.
  *
  * The destination's thumbs/ directory is created here rather than by each

@@ -28,7 +28,7 @@ starting point for a new page.
 
 The rest of the files: `upload.php` takes the form, `admin.php` is the
 password-protected review page -- sign in to accept or reject what has been sent
-in, and to delete what is on the home page -- and `moderate.php`
+in, and to move or delete what is on the home page -- and `moderate.php`
 backs the remove control in the photo viewer. `home.php` is a redirect kept for old links.
 `reference/` is the old Google Sites capture and the scripts that rebuilt it;
 the `.htaccess` rules answer it with a 404, along with `includes/`.
@@ -67,7 +67,7 @@ from a file in `photos/queue/`.
 The credit line and caption are not in the file. They live in `photos.json`, in
 the data directory beside `public_html` rather than inside it, along with the
 contact log (`submissions.log`), the removals log (`removals.log`) and the record
-of notifications sent (`mail.log`). Accepting, rejecting, sending back, deleting
+of notifications sent (`mail.log`). Accepting, rejecting, moving, deleting
 and crediting a photo are done on `/admin.php`, which rewrites that file. A
 photo's number is never reused, because its URL may already have been shared
 pointing at that photograph.
