@@ -3,51 +3,43 @@
 #
 # The live checkout on the server (~/public_html, a git checkout of origin/main)
 # and the live site at https://usydastro.org/ both stand at:
-LIVE_SERVER_GIT_REV=15e3b2a
+LIVE_SERVER_GIT_REV=d08c8f8
 #
 # This file's own commit is bookkeeping on top of that rev, so it is one commit
 # ahead of what it records; the authoritative marker is the server's
 # ~/suas-data/.deploy-commit.
 #
-# Verified:
-#  - no hybrid: the server and origin/main resolve to the same rev
-#  - live site / returns 200, with the gallery, the hero slides and the calendar
-#    intact, and every gallery thumbnail the page names answering 200
-#  - a submission goes to the strip, not the gallery: photo_accept() on the server
-#    moved a queued photo into photos/submissions/ with its thumbnail, created no
-#    hero slide, and left nothing in photos/ -- so it renders in the strip and
-#    cannot reach the slideshow. The tile markup names the credit the submitter
-#    gave, and the file it points at exists
-#  - photos/submissions/ is served (a photo in it answers 200, the directory
-#    answers 403 from Options -Indexes rather than the 404 that photos/queue/
-#    gets), so the queue rule did not catch the new directory
-#  - sending back returns a photo from either public collection to the private
-#    queue with its thumbnail, and strips a hero slide only where one existed
-#  - the delete log distinguishes the three: queued -> "Rejected from the review
-#    page", accepted -> "Deleted from the photos sent in", curated -> "Deleted
-#    from the gallery admin page"
-#  - the review page lists all three collections, and the titlebar carries the
-#    Admin link on / and on /about.php
-#  - nothing private is served: /includes/*, /suas-config.php, /photos.json and
-#    /photos/queue* answer 404; README.md, deploy.sh and server-state.txt are 403
-#  - security headers present: HSTS, CSP, X-Content-Type-Options, X-Frame-Options,
-#    Referrer-Policy, Permissions-Policy
+# How this deploy ran: git push origin HEAD:main, then git pull --ff-only in
+# ~/public_html (the flow in README.md, Deploying). Before the pull the server's
+# working tree carried hand-rsynced copies of the four asset files from the
+# previous deploy; their md5s were checked byte-identical to the commit, then
+# discarded so the pull restored identical committed content.
 #
-# Fixed during this deploy, having only shown up here:
-#  - photo_rename_thumb() now creates the destination's thumbs/ directory. rename()
-#    into a directory that does not exist fails silently, so accepting the first
-#    photo a site receives moved the photograph and stranded the thumbnail: the
-#    strip rendered a tile pointing at a missing file. The local test had passed
-#    only because its fixture had pre-created the directory.
+# Verified on d08c8f8:
+#  - no hybrid: local, origin/main and the server all resolve to d08c8f8, and
+#    every tracked code file now matches the repo (the four asset files are
+#    committed, so the live site no longer runs anything uncommitted)
+#  - the competition title sits a normal distance above the photos sent in: /
+#    serves section--half-bottom and section--half-top, the served
+#    assets/css/style.css?v=... carries all four half-padding rules including
+#    the narrow-window overrides, and the browser measures 18.2px + 18.2px
+#    (36px gap) at 1280px and 13px + 13px (26px gap) on a narrow window, which
+#    is what the doubled-class modifiers are there to survive
+#  - the mtime stamp on the stylesheet URL changed with the file, so browsers
+#    that cached the old sheet for a week now fetch the new one
+#  - photos untouched by the pull: photos/submissions/30.jpg and its thumbnail
+#    answer 200, photos/01.jpg and its thumbnail answer 200, the removed
+#    photos/20.jpg still answers 404, and the strip renders its three tiles
+#    with 19 gallery tiles behind it
+#  - /, /about.php and /admin.php answer 200 (upload.php answers 405 to a GET:
+#    it is POST-only), and the page console is clean
 #
 # State, not a fault of the deploy:
-#  - the strip is empty. Nothing has been accepted since the change landed
-#  - photos 30, 31 and 32 (Vansh Srivastava, Vansh Srivastava, Jonathon Zhong)
-#    were accepted through the review page BEFORE this change, when accepting
-#    still meant moving into photos/, so they are in the curated gallery and the
-#    hero slideshow. Under the rule now in force they belong in the strip. Moving
-#    them is one photo_accept() each from the queue, or a file move, and is a
-#    content decision rather than a code one
+#  - the server's working tree holds intentional deletions: photos/20.jpg,
+#    photos/queue/22.jpg and 23.jpg and their thumbnails (taken down or
+#    rejected earlier). git pull leaves them alone while no commit touches
+#    photos/, but deploy.sh's rsync steps would restore them, so deploy.sh
+#    remains unusable until its photos step is fixed
 #  - mail.log records the earlier notification as "sent", which means the host's
 #    MTA took it. Whether it reaches an inbox rather than a spam folder is not
 #    something this file can attest to; SPF and DMARC exist for usydastro.org
