@@ -3,64 +3,51 @@
 #
 # The live checkout on the server (~/public_html, a git checkout of origin/main)
 # and the live site at https://usydastro.org/ both stand at:
-LIVE_SERVER_GIT_REV=04bd6d4
+LIVE_SERVER_GIT_REV=da68c82
 #
 # This file's own commit is bookkeeping on top of that rev, so it is one commit
 # ahead of what it records; the authoritative marker is the server's
-# ~/suas-data/.deploy-commit.
+# ~/suas-data/.deploy-commit (now da68c82).
 #
-# How this deploy ran: git push origin HEAD:main, then git pull --ff-only in
-# ~/public_html (the flow in README.md, Deploying).
+# How this deploy ran: per DEPLOY.md -- git push origin HEAD:main, then
+# sshpass ssh 'cd public_html && git pull' on the host (the flow in README.md,
+# Deploying). The pull was a fast-forward whose diffstat listed exactly
+# admin.php and assets/css/style.css, so photographs were untouched by it.
 #
-# Verified on 04bd6d4:
-#  - no hybrid: local, origin/main and the server all resolve to 04bd6d4, and
-#    every tracked code file now matches the repo (the four asset files are
-#    committed, so the live site no longer runs anything uncommitted)
-#  - the competition title sits a normal distance above the photos sent in: /
-#    serves section--half-bottom and section--half-top, the served
-#    assets/css/style.css?v=... carries all four half-padding rules including
-#    the narrow-window overrides, and the browser measures 18.2px + 18.2px
-#    (36px gap) at 1280px and 13px + 13px (26px gap) on a narrow window, which
-#    is what the doubled-class modifiers are there to survive
-#  - the mtime stamp on the stylesheet URL changed with the file, so browsers
-#    that cached the old sheet for a week now fetch the new one
-#  - the notification email no longer tells the recipient the address can be
-#    changed in ~/suas-config.php: the body built by the live code path ends at
-#    the review link (checked on the server by calling suas_notify_message(),
-#    which builds without sending)
-#  - the Send back buttons are off the review page: the deployed admin.php has
-#    no send_back button or action, photo_unpublish() no longer exists
-#    (function_exists returns false), no "send back"/"no credit"/"no date"
-#    string remains in admin.php, includes/photos.php or README, and
-#    /admin.php answers 200. Signed-in rendering itself was not loaded -- no
-#    admin password is available to the agent
-#  - no blank placeholders: admin_detail_line() prints only the pieces that
-#    exist, exercised with the shipped bytes -- blank credit and date render
-#    as "1.2 MB" alone, all three present render "Vansh Srivastava · 10
-#    October 2026 · 1.2 MB", and admin.php plus includes/photos.php are
-#    md5-identical between this worktree and the server
-#  - Move To Gallery / Move To Submissions work end to end: a 18-assertion
-#    fixture ran ON the server against the deployed bytes (GD present) --
-#    submissions -> gallery lands file, thumb and a built hero slide with
-#    nothing left behind, gallery -> submissions takes the slide away with it,
-#    and the queue, a same-collection move, a bad destination and a missing
-#    file are all refused without touching anything. The render-only signed-in
-#    check with the real data shows 3 Move To Gallery and 19 Move To
-#    Submissions buttons, matching the lists, with no stale prose; no real
-#    photo was moved (submissions 3, gallery 19, slides 19 before and after)
-#  - / and /admin.php both answer 200, and admin.php plus includes/photos.php
-#    are md5-identical between this worktree and the server
-#  - the admin page reads "Admin" everywhere: the served <h1> is "Admin" and the
-#    tab title is "SUAS Admin" (site prefix kept), both read back from the live
-#    served page
-#  - photos untouched by the pull: photos/submissions/30.jpg and its thumbnail
-#    answer 200, photos/01.jpg and its thumbnail answer 200, the removed
-#    photos/20.jpg still answers 404, and the strip renders its three tiles
-#    with 19 gallery tiles behind it
-#  - /, /about.php and /admin.php answer 200 (upload.php answers 405 to a GET:
-#    it is POST-only), and the page console is clean
+# Verified on da68c82:
+#  - no hybrid: local, origin/main and the server all resolve to da68c82, and
+#    admin.php plus assets/css/style.css are md5-identical between the committed
+#    bytes (git show HEAD:...) and the files on the server
+#  - the sign out button sits beside the Admin heading: the served /admin.php
+#    carries the admin__head wrapper around the <h1>Admin</h1>, the served
+#    assets/css/style.css carries the .admin__head flex row (space-between,
+#    centered, 18px gap, wraps on narrow windows) with .admin__head h1
+#    margin-bottom 0 and .admin__logout margin 0, and the signed-out page
+#    answers 200 with no Sign out button anywhere in it
+#  - the layout was rendered locally from the committed bytes in both states:
+#    desktop (1280px) shows title left and Sign out right on one row, a ~413px
+#    window keeps them on one row, and the signed-out page shows no button and
+#    an unchanged title area
+#  - sign out still works through the moved form: a real POST of
+#    action=logout against the running code flipped the session from signed in
+#    to signed out (the page served "Sign in" afterwards); the logout handler
+#    itself is unchanged by this revision
+#  - signed-in rendering was not loaded on the live site -- no admin password is
+#    available to the agent (same limitation as the previous record); the
+#    signed-in layout evidence above comes from local rendering of the same
+#    committed bytes
+#  - /, /admin.php and the stylesheet all answer 200 over HTTPS, and
+#    photos/submissions/30.jpg and photos/01.jpg still answer 200
+#  - the server's ~/suas-data/.deploy-commit was updated to da68c82 after
+#    verification
 #
 # State, not a fault of the deploy:
+#  - this worktree carried an unstaged edit to assets/css/style.css
+#    (.admin__actions button flex sizing) made outside this deploy; it was left
+#    unstaged and is not on the server -- the server matches the commit bytes,
+#    not the dirty worktree. The local `git pull --rebase` from DEPLOY.md step 0
+#    therefore refused to run, harmlessly: local main was already at da68c82,
+#    which this deploy had pushed moments before (fetch-confirmed)
 #  - the server's working tree holds intentional deletions: photos/20.jpg,
 #    photos/queue/22.jpg and 23.jpg and their thumbnails (taken down or
 #    rejected earlier). git pull leaves them alone while no commit touches
