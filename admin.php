@@ -220,7 +220,7 @@ $gallery = photo_all('gallery');
 <title>SUAS - Gallery admin</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="assets/img/logo.png">
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="<?= attr(asset_url('assets/css/style.css')) ?>">
 </head>
 <body class="admin">
 

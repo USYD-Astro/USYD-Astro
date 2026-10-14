@@ -158,6 +158,30 @@ function attr(?string $value): string
     return htmlspecialchars(trim($collapsed), ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * A local asset's URL with its modification time attached.
+ *
+ * The host serves .css with a week-long max-age and the pages keep the same
+ * asset addresses forever, so a browser that has seen the stylesheet once will
+ * not ask for it again: a change to the CSS arrives up to seven days late, on a
+ * page whose markup changed immediately. That is not cosmetic. The strip of
+ * sent-in photos is styled entirely by rules added to style.css, so a returning
+ * visitor was shown the new markup dressed by the old stylesheet.
+ *
+ * The mtime gives the file a new address exactly when it changes, and only then,
+ * which keeps the cache useful at the same time as making it harmless. An
+ * absolute URL is somebody else's to version, so it is returned untouched.
+ */
+function asset_url(string $path): string
+{
+    if (preg_match('~^[a-z][a-z0-9+.-]*:~i', $path) === 1 || str_starts_with($path, '//')) {
+        return $path;
+    }
+    $file = APP_ROOT . '/' . ltrim($path, '/');
+    $stamp = is_file($file) ? filemtime($file) : false;
+    return $stamp === false ? $path : $path . '?v=' . $stamp;
+}
+
 /** Human-readable byte count, used on the admin page's photo lists. */
 function human_bytes(int $bytes): string
 {

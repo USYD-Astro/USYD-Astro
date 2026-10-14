@@ -36,9 +36,9 @@ $page_scripts = $page_scripts ?? [];
   <p class="site-foot__legal">&copy; 2026 Sydney University Astronomy Society | Website by Murray Jones</p>
 </footer>
 
-<script src="assets/js/main.js"></script>
+<script src="<?= attr(asset_url('assets/js/main.js')) ?>"></script>
 <?php foreach ($page_scripts as $script): ?>
-<script src="<?= e($script) ?>"></script>
+<script src="<?= attr(asset_url($script)) ?>"></script>
 <?php endforeach; ?>
 </body>
 </html>
