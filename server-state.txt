@@ -3,7 +3,7 @@
 #
 # The live checkout on the server (~/public_html, a git checkout of origin/main)
 # and the live site at https://usydastro.org/ both stand at:
-LIVE_SERVER_GIT_REV=6ff298f
+LIVE_SERVER_GIT_REV=78df20e
 #
 # This file's own commit is bookkeeping on top of that rev, so it is one commit
 # ahead of what it records; the authoritative marker is the server's
@@ -12,8 +12,8 @@ LIVE_SERVER_GIT_REV=6ff298f
 # How this deploy ran: git push origin HEAD:main, then git pull --ff-only in
 # ~/public_html (the flow in README.md, Deploying).
 #
-# Verified on 6ff298f:
-#  - no hybrid: local, origin/main and the server all resolve to 6ff298f, and
+# Verified on 78df20e:
+#  - no hybrid: local, origin/main and the server all resolve to 78df20e, and
 #    every tracked code file now matches the repo (the four asset files are
 #    committed, so the live site no longer runs anything uncommitted)
 #  - the competition title sits a normal distance above the photos sent in: /
@@ -39,6 +39,8 @@ LIVE_SERVER_GIT_REV=6ff298f
 #    as "1.2 MB" alone, all three present render "Vansh Srivastava · 10
 #    October 2026 · 1.2 MB", and admin.php plus includes/photos.php are
 #    md5-identical between this worktree and the server
+#  - the admin tab title is "SUAS Gallery admin", no hyphen: read back from the
+#    live served page
 #  - photos untouched by the pull: photos/submissions/30.jpg and its thumbnail
 #    answer 200, photos/01.jpg and its thumbnail answer 200, the removed
 #    photos/20.jpg still answers 404, and the strip renders its three tiles
