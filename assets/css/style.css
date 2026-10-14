@@ -1517,6 +1517,15 @@ p {
 .admin__actions .button {
   padding: 8px 14px;
   font-size: 0.9rem;
+
+  /* Labels here differ in length, and a card is barely wider than the longest
+     one: unstretched, Move To Submissions fills its card edge to edge while
+     Move To Gallery leaves half of the row empty, so the two lists read as
+     having differently styled buttons. Growing every action button to its row
+     gives the two lists the same shape whatever the label says. min-width: 0
+     lets a label wrap rather than overflow on the narrowest cards. */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .button--danger {
