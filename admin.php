@@ -214,7 +214,7 @@ $gallery = photo_all('gallery');
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SUAS - Gallery admin</title>
+<title>SUAS Gallery admin</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="assets/img/logo.png">
 <link rel="stylesheet" href="<?= attr(asset_url('assets/css/style.css')) ?>">
