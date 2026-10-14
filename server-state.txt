@@ -3,17 +3,14 @@
 #
 # The live checkout on the server (~/public_html, a git checkout of origin/main)
 # and the live site at https://usydastro.org/ both stand at:
-LIVE_SERVER_GIT_REV=d08c8f8
+LIVE_SERVER_GIT_REV=bd8e821
 #
 # This file's own commit is bookkeeping on top of that rev, so it is one commit
 # ahead of what it records; the authoritative marker is the server's
 # ~/suas-data/.deploy-commit.
 #
 # How this deploy ran: git push origin HEAD:main, then git pull --ff-only in
-# ~/public_html (the flow in README.md, Deploying). Before the pull the server's
-# working tree carried hand-rsynced copies of the four asset files from the
-# previous deploy; their md5s were checked byte-identical to the commit, then
-# discarded so the pull restored identical committed content.
+# ~/public_html (the flow in README.md, Deploying).
 #
 # Verified on d08c8f8:
 #  - no hybrid: local, origin/main and the server all resolve to d08c8f8, and
@@ -27,6 +24,10 @@ LIVE_SERVER_GIT_REV=d08c8f8
 #    is what the doubled-class modifiers are there to survive
 #  - the mtime stamp on the stylesheet URL changed with the file, so browsers
 #    that cached the old sheet for a week now fetch the new one
+#  - the notification email no longer tells the recipient the address can be
+#    changed in ~/suas-config.php: the body built by the live code path ends at
+#    the review link (checked on the server by calling suas_notify_message(),
+#    which builds without sending)
 #  - photos untouched by the pull: photos/submissions/30.jpg and its thumbnail
 #    answer 200, photos/01.jpg and its thumbnail answer 200, the removed
 #    photos/20.jpg still answers 404, and the strip renders its three tiles
