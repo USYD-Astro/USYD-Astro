@@ -574,41 +574,6 @@ function photo_publish(string $file): bool
 }
 
 /**
- * Send a photo back to the pending list: the inverse of photo_accept(), and the
- * way a curated photo is taken off the home page without being deleted.
- *
- * Either public collection can be sent back, and both end up in the private
- * queue with their thumbnail. A curated photo also loses its hero slide, because
- * the slideshow only ever shows what is in photos/; a submission never had one.
- */
-function photo_unpublish(string $file): bool
-{
-    return photo_with_lock(function () use ($file): bool {
-        $file = basename($file);
-        $photo = photo_find($file);
-        if ($photo === null || $photo['collection'] === 'queue') {
-            return false;
-        }
-        $collection = $photo['collection'];
-        $from = photo_path($collection, $file);
-        if (!is_file($from)) {
-            return false;
-        }
-        if (!is_dir(QUEUE_DIR)) {
-            mkdir(QUEUE_DIR, 0755, true);
-        }
-        if (!rename($from, photo_path('queue', $file))) {
-            return false;
-        }
-        photo_rename_thumb($collection, 'queue', $file);
-        if ($collection === 'gallery' && is_file(photo_slide_path($file))) {
-            @unlink(photo_slide_path($file));
-        }
-        return true;
-    });
-}
-
-/**
  * Move a thumbnail between collections, where one exists to move.
  *
  * The destination's thumbs/ directory is created here rather than by each

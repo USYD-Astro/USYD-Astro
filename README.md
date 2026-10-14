@@ -28,7 +28,7 @@ starting point for a new page.
 
 The rest of the files: `upload.php` takes the form, `admin.php` is the
 password-protected review page -- sign in to accept or reject what has been sent
-in, and to send back or delete what is on the home page -- and `moderate.php`
+in, and to delete what is on the home page -- and `moderate.php`
 backs the remove control in the photo viewer. `home.php` is a redirect kept for old links.
 `reference/` is the old Google Sites capture and the scripts that rebuilt it;
 the `.htaccess` rules answer it with a 404, along with `includes/`.

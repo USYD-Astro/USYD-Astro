@@ -8,8 +8,8 @@ declare(strict_types=1);
  * Three lists, which are the three directories:
  *
  *   Pending review      photos/queue/        -- accept one, or reject it
- *   Photos sent in      photos/submissions/  -- on the home page: send back, or delete
- *   Home page gallery   photos/              -- curated by hand: send back, or delete
+ *   Photos sent in      photos/submissions/  -- on the home page: delete
+ *   Home page gallery   photos/              -- curated by hand: delete
  *
  * The queue is private. It is not rendered anywhere on the site, and .htaccess
  * refuses photos/queue/ outright, because a filename like 03.jpg is a guess away
@@ -116,6 +116,16 @@ function admin_pending_thumb_url(string $file): string
     return 'admin.php?pending=' . rawurlencode(basename($file));
 }
 
+/** The one-line detail under a photo's filename: only the pieces that exist. */
+function admin_detail_line(array $photo): string
+{
+    $parts = array_filter(
+        [(string) ($photo['credit'] ?? ''), (string) ($photo['date'] ?? ''), human_bytes((int) ($photo['bytes'] ?? 0))],
+        fn (string $part): bool => $part !== ''
+    );
+    return implode(' · ', $parts);
+}
+
 /* No session, no image: this runs before the POST handling below, and before
    anything is written to the response.
 
@@ -168,19 +178,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                         $message = sprintf('%s is now in the photos sent in on the home page.', $file);
                     } else {
                         $error = 'That photo is not waiting for review.';
-                    }
-                    break;
-
-                case 'send_back':
-                    if (photo_unpublish($file)) {
-                        $message = sprintf(
-                            $collection === 'gallery'
-                                ? '%s is back in the pending list, with its slide removed.'
-                                : '%s is back in the pending list.',
-                            $file
-                        );
-                    } else {
-                        $error = 'That photo is not on the site.';
                     }
                     break;
 
@@ -272,11 +269,7 @@ $gallery = photo_all('gallery');
       <img src="<?= e(admin_pending_thumb_url($photo['file'])) ?>" alt="" loading="lazy">
       <figcaption>
         <p class="admin__file"><?= e($photo['file']) ?></p>
-        <p class="admin__detail">
-          <?= e($photo['credit'] !== '' ? $photo['credit'] : 'no credit') ?>
-          &middot; <?= e($photo['date'] !== '' ? $photo['date'] : 'no date') ?>
-          &middot; <?= e(human_bytes($photo['bytes'])) ?>
-        </p>
+        <p class="admin__detail"><?= e(admin_detail_line($photo)) ?></p>
 <?php if ($photo['caption'] !== ''): ?>
         <p class="admin__detail admin__caption"><?= e($photo['caption']) ?></p>
 <?php endif; ?>
@@ -293,7 +286,7 @@ $gallery = photo_all('gallery');
 <?php endif; ?>
 
   <h2 class="admin__heading">Photos sent in <span class="admin__count"><?= count($submissions) ?></span></h2>
-  <p class="admin__meta">These are on the home page now, in the strip below the competition blurb. Sending one back returns it to the pending list, where nobody can see it.</p>
+  <p class="admin__meta">These are on the home page now, in the strip below the competition blurb.</p>
 
 <?php if ($submissions === []): ?>
   <p class="admin__meta">Nothing has been accepted yet.</p>
@@ -304,18 +297,13 @@ $gallery = photo_all('gallery');
       <img src="<?= e(photo_thumb_url('submissions', $photo['file'])) ?>" alt="" loading="lazy">
       <figcaption>
         <p class="admin__file"><?= e($photo['file']) ?></p>
-        <p class="admin__detail">
-          <?= e($photo['credit'] !== '' ? $photo['credit'] : 'no credit') ?>
-          &middot; <?= e($photo['date'] !== '' ? $photo['date'] : 'no date') ?>
-          &middot; <?= e(human_bytes($photo['bytes'])) ?>
-        </p>
+        <p class="admin__detail"><?= e(admin_detail_line($photo)) ?></p>
 <?php if ($photo['caption'] !== ''): ?>
         <p class="admin__detail admin__caption"><?= e($photo['caption']) ?></p>
 <?php endif; ?>
         <form method="post" class="admin__actions">
           <input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>">
           <input type="hidden" name="file" value="<?= e($photo['file']) ?>">
-          <button type="submit" class="button button--ghost" name="action" value="send_back">Send back</button>
           <button type="submit" class="button button--danger" name="action" value="delete" data-confirm="Delete <?= e($photo['file']) ?> from the photos sent in? This cannot be undone.">Delete</button>
         </form>
       </figcaption>
@@ -325,7 +313,7 @@ $gallery = photo_all('gallery');
 <?php endif; ?>
 
   <h2 class="admin__heading">Home page gallery <span class="admin__count"><?= count($gallery) ?></span></h2>
-  <p class="admin__meta">These fill the hero slideshow and the photo gallery. They are curated by hand, so this list is for taking one off the site: sending one back returns it to the pending list, with its slide removed.</p>
+  <p class="admin__meta">These fill the hero slideshow and the photo gallery. They are curated by hand, so this list is for taking one off the site.</p>
 
 <?php if ($gallery === []): ?>
   <p class="admin__meta">The gallery is empty.</p>
@@ -336,15 +324,10 @@ $gallery = photo_all('gallery');
       <img src="<?= e(photo_thumb_url('gallery', $photo['file'])) ?>" alt="" loading="lazy">
       <figcaption>
         <p class="admin__file"><?= e($photo['file']) ?></p>
-        <p class="admin__detail">
-          <?= e($photo['credit'] !== '' ? $photo['credit'] : 'no credit') ?>
-          &middot; <?= e($photo['date'] !== '' ? $photo['date'] : 'no date') ?>
-          &middot; <?= e(human_bytes($photo['bytes'])) ?>
-        </p>
+        <p class="admin__detail"><?= e(admin_detail_line($photo)) ?></p>
         <form method="post" class="admin__actions">
           <input type="hidden" name="csrf" value="<?= e($_SESSION['csrf']) ?>">
           <input type="hidden" name="file" value="<?= e($photo['file']) ?>">
-          <button type="submit" class="button button--ghost" name="action" value="send_back">Send back</button>
           <button type="submit" class="button button--danger" name="action" value="delete" data-confirm="Delete <?= e($photo['file']) ?> from the gallery? This cannot be undone.">Delete</button>
         </form>
       </figcaption>
