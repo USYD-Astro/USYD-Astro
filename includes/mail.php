@@ -143,8 +143,6 @@ function suas_notify_message(array $submission, int $pending): ?array
     $lines[] = '';
     $lines[] = 'Accept or reject them here:';
     $lines[] = $link;
-    $lines[] = '';
-    $lines[] = 'This address can be changed in ~/suas-config.php.';
 
     $headers = [
         'From: SUAS website <' . $from . '>',
