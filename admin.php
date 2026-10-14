@@ -214,7 +214,7 @@ $gallery = photo_all('gallery');
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SUAS Gallery admin</title>
+<title>SUAS Admin</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="assets/img/logo.png">
 <link rel="stylesheet" href="<?= attr(asset_url('assets/css/style.css')) ?>">
@@ -223,7 +223,7 @@ $gallery = photo_all('gallery');
 
 <main class="admin__wrap">
   <p class="admin__back"><a href="index.php">&larr; Back to the site</a></p>
-  <h1>Gallery admin</h1>
+  <h1>Admin</h1>
 
 <?php if ($message !== ''): ?>
   <p class="admin__flash admin__flash--ok"><?= e($message) ?></p>
