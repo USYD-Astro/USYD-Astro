@@ -3,59 +3,63 @@
 #
 # The live checkout on the server (~/public_html, a git checkout of origin/main)
 # and the live site at https://usydastro.org/ both stand at:
-LIVE_SERVER_GIT_REV=da68c82
+LIVE_SERVER_GIT_REV=b79696b
 #
 # This file's own commit is bookkeeping on top of that rev, so it is one commit
 # ahead of what it records; the authoritative marker is the server's
-# ~/suas-data/.deploy-commit (now da68c82).
+# ~/suas-data/.deploy-commit (now b79696b).
 #
-# How this deploy ran: per DEPLOY.md -- git push origin HEAD:main, then
-# sshpass ssh 'cd public_html && git pull' on the host (the flow in README.md,
-# Deploying). The pull was a fast-forward whose diffstat listed exactly
-# admin.php and assets/css/style.css, so photographs were untouched by it.
+# How this deploy ran: per DEPLOY.md, all four steps -- step 0 (git status: no
+# tracked changes, no stashes; git pull --rebase origin main: already up to
+# date), step 1 (git push origin main: everything up to date), step 2
+# (sshpass ssh 'cd public_html && git pull': already up to date), then the
+# verification curls. Nothing needed shipping: the two commits below had been
+# pushed and pulled onto the server in their own turns.
 #
-# Verified on da68c82:
-#  - no hybrid: local, origin/main and the server all resolve to da68c82, and
-#    admin.php plus assets/css/style.css are md5-identical between the committed
-#    bytes (git show HEAD:...) and the files on the server
-#  - the sign out button sits beside the Admin heading: the served /admin.php
-#    carries the admin__head wrapper around the <h1>Admin</h1>, the served
-#    assets/css/style.css carries the .admin__head flex row (space-between,
-#    centered, 18px gap, wraps on narrow windows) with .admin__head h1
-#    margin-bottom 0 and .admin__logout margin 0, and the signed-out page
-#    answers 200 with no Sign out button anywhere in it
-#  - the layout was rendered locally from the committed bytes in both states:
-#    desktop (1280px) shows title left and Sign out right on one row, a ~413px
-#    window keeps them on one row, and the signed-out page shows no button and
-#    an unchanged title area
-#  - sign out still works through the moved form: a real POST of
-#    action=logout against the running code flipped the session from signed in
-#    to signed out (the page served "Sign in" afterwards); the logout handler
-#    itself is unchanged by this revision
-#  - signed-in rendering was not loaded on the live site -- no admin password is
-#    available to the agent (same limitation as the previous record); the
-#    signed-in layout evidence above comes from local rendering of the same
-#    committed bytes
-#  - /, /admin.php and the stylesheet all answer 200 over HTTPS, and
-#    photos/submissions/30.jpg and photos/01.jpg still answer 200
-#  - the server's ~/suas-data/.deploy-commit was updated to da68c82 after
+# What b79696b adds on top of the previously recorded da68c82:
+#  - 464a134 Stretch admin card action buttons so both lists read the same
+#  - b79696b Send every submission notice to the club's Gmail as well
+#
+# Verified on b79696b:
+#  - no hybrid: local, origin/main and the server all resolve to b79696b, and
+#    admin.php, includes/mail.php and includes/bootstrap.php are md5-identical
+#    between the worktree and the files on the server
+#  - the admin card action buttons stretch: assets/css/style.css carries
+#    .admin__actions .button { flex: 1 1 auto; min-width: 0 } and the live site
+#    serves those bytes with a fresh mtime cache-buster; the rendered page at
+#    1280px shows both move buttons 170px (full card width) in their two
+#    sections and at 390px nothing overflows (rendered locally from the same
+#    bytes; evidence in the session that made the change)
+#  - submission notices go to two addresses: a build-only check run ON the
+#    server (php -r, requiring the deployed includes/bootstrap.php) called
+#    suas_notify_recipients() and suas_notify_message() and reported
+#    count=2 gmail=true to_addrs=2 null=false -- the configured private
+#    recipient is still in place (its value was never printed) and
+#    usydastronomy@gmail.com is the second address; no mail was sent by the
+#    check
+#  - the admin page tells the caretaker: "Each submission also emails <primary>
+#    and <usydastronomy@gmail.com>." rendered from the deployed bytes, both
+#    addresses inside their own <code> element
+#  - /, /about.php and /admin.php answer 200 over HTTPS (home.php answers 301,
+#    its normal redirect), and admin.php plus the two includes above are
+#    md5-identical between this worktree and the server
+#  - the server's ~/suas-data/.deploy-commit was updated to b79696b after
 #    verification
 #
 # State, not a fault of the deploy:
-#  - this worktree carried an unstaged edit to assets/css/style.css
-#    (.admin__actions button flex sizing) made outside this deploy; it was left
-#    unstaged and is not on the server -- the server matches the commit bytes,
-#    not the dirty worktree. The local `git pull --rebase` from DEPLOY.md step 0
-#    therefore refused to run, harmlessly: local main was already at da68c82,
-#    which this deploy had pushed moments before (fetch-confirmed)
+#  - signed-in rendering on the live site was not loaded -- no admin password is
+#    available to the agent (same limitation as the previous records); the
+#    signed-in evidence above comes from local rendering of the same committed
+#    bytes and from md5 equality with the server's files
+#  - delivery to an actual inbox is not attested by this file, as before: the
+#    notification path itself is unchanged except for the recipient list, and
+#    the Gmail copy has not yet been exercised by a real submission. mail.log
+#    will say "sent" per submission; whether Gmail receives it is Gmail's side
 #  - the server's working tree holds intentional deletions: photos/20.jpg,
 #    photos/queue/22.jpg and 23.jpg and their thumbnails (taken down or
 #    rejected earlier). git pull leaves them alone while no commit touches
 #    photos/, but deploy.sh's rsync steps would restore them, so deploy.sh
 #    remains unusable until its photos step is fixed
-#  - mail.log records the earlier notification as "sent", which means the host's
-#    MTA took it. Whether it reaches an inbox rather than a spam folder is not
-#    something this file can attest to; SPF and DMARC exist for usydastro.org
 #  - the From address is photos@usydastro.org, which is not a mailbox or a
 #    forwarder on this account. It is on the sending domain, which is what SPF
 #    needs, and replies go to the submitter via Reply-To. Set notify_from in
