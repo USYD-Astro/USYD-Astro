@@ -12,11 +12,10 @@ declare(strict_types=1);
  * Three things decide whether a message goes out, and all of them are here rather
  * than in upload.php:
  *
- *   - the recipient, from ~/suas-config.php, so the address can change without a
- *     deploy;
+ *   - the recipients: the address in ~/suas-config.php, plus a copy to the
+ *     club's own Gmail by default (notify_email_cc, settable like the rest);
  *   - a rolling hourly cap, because upload.php is public and an endpoint that
  *     mails on every POST is a way to fill somebody's inbox from a script;
- *   - the refusal list below, which is not configurable.
  *
  * Nothing here may throw. The photos are stored, and the submitter has already
  * been told it worked, by the time this runs: a mail server having a bad day must
@@ -31,23 +30,32 @@ declare(strict_types=1);
  */
 
 /**
- * Addresses this site must never mail.
+ * Where submissions are announced, in the order they were configured.
  *
- * The club's published Gmail is read by hand and must not receive this
- * notification, so the address is refused here rather than merely left out of
- * the config: the recipient is configurable, and a plausible-looking edit to
- * ~/suas-config.php is all it would take to start sending there.
+ * Two sources: notify_email, the committee's own inbox, and notify_email_cc, a
+ * copy that goes to the club's Gmail by default -- the committee asked for the
+ * published address to see every submission notice as well as the private
+ * inbox. Addresses that are empty or not valid email are dropped, and the same
+ * address twice is delivered once.
+ *
+ * @return string[] zero, one or two addresses
  */
-function suas_notify_refused(string $email): bool
+function suas_notify_recipients(): array
 {
-    static $refused = ['usydastronomy@gmail.com'];
-    return in_array(strtolower(trim($email)), $refused, true);
-}
-
-/** Where submissions are announced. The default is set in includes/bootstrap.php. */
-function suas_notify_recipient(): string
-{
-    return trim((string) config('notify_email'));
+    $recipients = [];
+    foreach ([config('notify_email'), config('notify_email_cc')] as $configured) {
+        $email = trim((string) $configured);
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            continue;
+        }
+        foreach ($recipients as $already) {
+            if (strcasecmp($already, $email) === 0) {
+                continue 2;
+            }
+        }
+        $recipients[] = $email;
+    }
+    return $recipients;
 }
 
 /** The address the notification comes from: a mailbox on our own domain, so it aligns. */
@@ -87,11 +95,8 @@ function suas_notify_clean(string $value): string
  */
 function suas_notify_message(array $submission, int $pending): ?array
 {
-    $recipient = suas_notify_recipient();
-    if (suas_notify_refused($recipient)) {
-        return null;
-    }
-    if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+    $recipients = suas_notify_recipients();
+    if ($recipients === []) {
         return null;
     }
 
@@ -157,7 +162,7 @@ function suas_notify_message(array $submission, int $pending): ?array
     }
 
     return [
-        'to' => $recipient,
+        'to' => implode(', ', $recipients),
         'subject' => $subject,
         'body' => implode("\n", $lines),
         'headers' => $headers,
@@ -223,9 +228,7 @@ function suas_notify_submission(array $submission, int $pending): bool
             photo_append_log('mail.log', [
                 'at' => date('c'),
                 'outcome' => 'skipped',
-                'detail' => suas_notify_refused(suas_notify_recipient())
-                    ? 'the configured recipient is one this site must not mail'
-                    : 'no usable notification address is configured',
+                'detail' => 'no usable notification address is configured',
             ]);
             return false;
         }

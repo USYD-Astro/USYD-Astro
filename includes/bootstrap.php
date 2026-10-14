@@ -77,9 +77,13 @@ $GLOBALS['suas_config'] = array_merge(
 
         // Who is told when a submission arrives. This is a placeholder for the
         // committee's own inbox and is meant to be set in ~/suas-config.php:
-        // see includes/config.example.php. The club's published Gmail is refused
-        // outright by includes/mail.php and cannot be used here.
+        // see includes/config.example.php.
         'notify_email' => 'murray@usydcanoeclub.org',
+
+        // A second copy of every submission notification. The committee asked
+        // for the club's published Gmail to see the notices alongside the
+        // private inbox; set this to '' in ~/suas-config.php to stop that copy.
+        'notify_email_cc' => 'usydastronomy@gmail.com',
 
         // What the notification comes from. Has to be an address on this
         // account's own domain, or the host will not send it and SPF will not

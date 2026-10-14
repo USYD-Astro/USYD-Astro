@@ -46,7 +46,7 @@ session_set_cookie_params([
 session_start();
 
 $passwordHash = admin_password_hash();
-$notifyTo = suas_notify_recipient();
+$notifyTo = suas_notify_recipients();
 $message = '';
 $error = '';
 
@@ -277,8 +277,8 @@ $gallery = photo_all('gallery');
 
   <h2 class="admin__heading">Pending review <span class="admin__count"><?= count($queued) ?></span></h2>
   <p class="admin__meta">Nobody can see these yet. Accepting one adds it to the photos sent in on the home page; rejecting deletes it.</p>
-<?php if ($notifyTo !== ''): ?>
-  <p class="admin__meta">Each submission also emails <code><?= e($notifyTo) ?></code>.</p>
+<?php if ($notifyTo !== []): ?>
+  <p class="admin__meta">Each submission also emails <code><?= implode('</code> and <code>', array_map('e', $notifyTo)) ?></code>.</p>
 <?php endif; ?>
 
 <?php if ($queued === []): ?>

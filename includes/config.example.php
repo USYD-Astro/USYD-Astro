@@ -59,6 +59,12 @@ return [
     // committee inbox that should actually receive these in its place.
     'notify_email' => 'murray@usydcanoeclub.org',
 
+    // A second copy of every notification, sent alongside notify_email. The
+    // default (the club's Gmail, set in includes/bootstrap.php) is deliberate:
+    // the committee asked for the published address to see submission notices
+    // too. Set this to '' to mail only notify_email.
+    'notify_email_cc' => 'usydastronomy@gmail.com',
+
     // What the notification is sent from. Must be an address on this account's
     // own domain, or the host's mail server will not send it and SPF will not
     // vouch for it. It does not have to be a mailbox anyone reads, but it does

@@ -75,15 +75,17 @@ pointing at that photograph.
 ## Being told about a submission
 
 A submission does not sit in the queue until somebody happens to look: each one
-emails the address in `notify_email`, with the submitter's name, their reply
-address, what they wrote and a link to `/admin.php`. One message per submission.
+emails the address in `notify_email` with the submitter's name, their reply
+address, what they wrote and a link to `/admin.php`, and sends a second copy to
+`notify_email_cc` -- the club's Gmail by default, set in
+`includes/bootstrap.php` and overridable in `~/suas-config.php`. One message per
+submission.
 
 It goes out with the host's own mail server, so there is no account or key to
 set up. Every attempt -- sent, skipped or failed -- is appended to `mail.log` in
 the data directory, which is where to look when a notification does not arrive.
 A rolling hourly cap (20 by default) stops the public form being used to flood
-somebody's inbox. Nothing is ever sent to `usydastronomy@gmail.com`;
-`includes/mail.php` refuses that address whatever the config says.
+somebody's inbox.
 
 ## Calendar
 
